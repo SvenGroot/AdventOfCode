@@ -14,8 +14,8 @@ fn main() -> Result<()> {
             let line = line?;
             let bytes = line.as_bytes();
             let opponent_choice = bytes[0] as i32 - 'A' as i32;
-            let my_choice = bytes[2] as i32 - 'X' as i32;
-            let outcome = (my_choice - opponent_choice).rem_euclid(3);
+            let outcome = bytes[2] as i32 - 'Y' as i32;
+            let my_choice = (opponent_choice + outcome).rem_euclid(3);
             let points = match outcome {
                 1 => 6,
                 0 => 3,
