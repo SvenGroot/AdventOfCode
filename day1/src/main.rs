@@ -1,26 +1,15 @@
 // https://adventofcode.com/2022/day/1
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    num::ParseIntError,
-    str::FromStr,
-};
+use std::str::FromStr;
 
-use anyhow::Result;
+use aoc::get_input_vec;
 
-fn main() -> Result<()> {
-    let file = File::open("input/day1.txt")?;
-    let reader = BufReader::new(file);
-    let mut result = reader
-        .lines()
-        .collect::<std::io::Result<Vec<_>>>()?
+fn main() {
+    let mut result = get_input_vec("input/day1.txt")
         .split(|l| l.is_empty())
-        .map(|split| split.iter().map(|l| u32::from_str(l)).sum())
-        .collect::<Result<Vec<u32>, ParseIntError>>()?;
+        .map(|split| split.iter().map(|l| u32::from_str(l).unwrap()).sum())
+        .collect::<Vec<u32>>();
 
     result.sort_by(|a, b| b.cmp(a));
     let sum: u32 = result.iter().take(3).sum();
     println!("Sum: {}", sum);
-
-    Ok(())
 }
