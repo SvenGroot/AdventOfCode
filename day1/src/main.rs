@@ -9,13 +9,12 @@ use std::{
 use anyhow::Result;
 
 fn main() -> Result<()> {
-    let file = File::open("input.txt")?;
+    let file = File::open("input/day1.txt")?;
     let reader = BufReader::new(file);
     let mut result = reader
         .lines()
-        .map(|l| l)
         .collect::<std::io::Result<Vec<_>>>()?
-        .split(|l| l.len() == 0)
+        .split(|l| l.is_empty())
         .map(|split| split.iter().map(|l| u32::from_str(l)).sum())
         .collect::<Result<Vec<u32>, ParseIntError>>()?;
 

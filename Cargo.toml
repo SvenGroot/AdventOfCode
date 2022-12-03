@@ -1,0 +1,8 @@
+[workspace]
+members = ["day*"]
+
+[workspace.package]
+authors = ["Sven Groot"]
+
+[workspace.dependencies]
+anyhow = "1.0.66"
