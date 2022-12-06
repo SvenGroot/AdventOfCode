@@ -39,9 +39,7 @@ fn move_crates(path: &str, multi: bool) -> String {
 
     println!("{}", stacks);
 
-    let mut result = String::new();
-    stacks.tops().for_each(|ch| result.push(ch));
-    result
+    stacks.tops().collect()
 }
 
 fn parse_op(op: &str) -> (usize, usize, usize) {
