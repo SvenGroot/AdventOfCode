@@ -65,7 +65,7 @@ mod tests {
     #[test]
     fn test_stacks() {
         let input = get_input_vec(PATH);
-        let lines = input.split(|l| l.is_empty()).nth(0).unwrap();
+        let lines = input.split(|l| l.is_empty()).next().unwrap();
         let mut s = Stacks::new(lines);
         println!("{}", s);
         assert_eq!('N', s._top(0).unwrap());
@@ -88,7 +88,7 @@ mod tests {
     #[test]
     fn test_mv_multi() {
         let input = get_input_vec(PATH);
-        let lines = input.split(|l| l.is_empty()).nth(0).unwrap();
+        let lines = input.split(|l| l.is_empty()).next().unwrap();
         let mut s = Stacks::new(lines);
 
         s.mv_multi(1, 0, 1);
