@@ -19,9 +19,9 @@ impl<'a, T> Iterator for SlidingWindow<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index + self.window_size <= self.storage.len() {
-            let result = Some(&self.storage[self.index..self.index + self.window_size]);
+            let window = &self.storage[self.index..self.index + self.window_size];
             self.index += 1;
-            result
+            Some(window)
         } else {
             None
         }
