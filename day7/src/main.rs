@@ -1,5 +1,3 @@
-#![allow(unused_variables)]
-#![allow(unused_imports)]
 mod tree;
 
 use aoc::get_input;
@@ -94,9 +92,7 @@ fn parse_node(
 ) -> Option<()> {
     loop {
         let line = iter.next()?;
-        if line.starts_with("$ cd ") {
-            let dir = &line[5..];
-
+        if let Some(dir) = line.strip_prefix("$ cd ") {
             // "/" only occurs at the start of the input so we don;t actually need to handle it.
             if dir == ".." {
                 break;

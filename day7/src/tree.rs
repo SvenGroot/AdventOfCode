@@ -52,13 +52,7 @@ impl<T> TreeNode<T> {
     }
 
     pub fn find_mut(&mut self, mut pred: impl FnMut(&T) -> bool) -> Option<&mut Self> {
-        for child in self.children.iter_mut() {
-            if pred(&child.content) {
-                return Some(child);
-            }
-        }
-
-        None
+        self.children.iter_mut().find(|node| pred(node.content()))
     }
 }
 
@@ -87,7 +81,7 @@ mod tests {
     fn test_node() {
         let mut root = TreeNode::new(1);
         let node = root.add_child(2);
-        let node2 = node.add_child(3);
+        node.add_child(3);
         root.add_child(4);
         let mut sum = 0;
         root.walk(&mut |val| sum += val);
