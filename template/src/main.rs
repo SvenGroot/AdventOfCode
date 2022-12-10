@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 use aoc::get_input;
