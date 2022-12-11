@@ -5,7 +5,7 @@ use aoc::get_input;
 use std::str::FromStr;
 
 fn main() {
-    const PATH: &str = "input/day4.txt";
+    const PATH: &str = "input/day.txt";
     println!("Part 1: {}", part1(PATH));
     println!("Part 2: {}", part2(PATH));
 }
@@ -22,7 +22,7 @@ fn part2(path: &str) -> u32 {
 mod tests {
     use super::*;
 
-    const PATH: &str = "../input/sample/day4.txt";
+    const PATH: &str = "../input/sample/day.txt";
 
     #[test]
     fn test_part1() {
