@@ -2,12 +2,9 @@
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 
-mod sliding_window;
-
+use aoc::sliding_window::HasSlidingWindow;
 use aoc::{get_input, get_input_single};
 use std::{collections::HashSet, str::FromStr};
-
-use crate::sliding_window::HasSlidingWindow;
 
 fn main() {
     const PATH: &str = "input/day6.txt";
