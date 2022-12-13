@@ -2,22 +2,23 @@
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 use aoc::dijkstra::Graph;
-use aoc::get_input;
 use aoc::sliding_window::HasSlidingWindow;
+use aoc::{aoc_input, get_input};
+use std::path::Path;
 use std::str::FromStr;
 
 fn main() {
-    const PATH: &str = "input/day12.txt";
-    println!("Part 1: {}", part1(PATH));
-    println!("Part 2: {}", part2(PATH));
+    let path = aoc_input();
+    println!("Part 1: {}", part1(&path));
+    println!("Part 2: {}", part2(&path));
 }
 
-fn part1(path: &str) -> usize {
+fn part1(path: impl AsRef<Path>) -> usize {
     let map = HeightMap::parse(path);
     map.shortest_path()
 }
 
-fn part2(path: &str) -> usize {
+fn part2(path: impl AsRef<Path>) -> usize {
     let map = HeightMap::parse(path);
     map.shortest_path_from_lowest()
 }
@@ -34,7 +35,7 @@ struct HeightMap {
 }
 
 impl HeightMap {
-    fn parse(path: &str) -> Self {
+    fn parse(path: impl AsRef<Path>) -> Self {
         let mut start = Point::default();
         let mut end = Point::default();
         let map = get_input(path)
@@ -174,17 +175,17 @@ impl Graph<Point> for HeightMap {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use aoc::aoc_sample_input;
 
-    const PATH: &str = "../input/sample/day12.txt";
+    use super::*;
 
     #[test]
     fn test_part1() {
-        assert_eq!(31, part1(PATH));
+        assert_eq!(31, part1(aoc_sample_input()));
     }
 
     #[test]
     fn test_part2() {
-        assert_eq!(29, part2(PATH));
+        assert_eq!(29, part2(aoc_sample_input()));
     }
 }
