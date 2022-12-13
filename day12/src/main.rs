@@ -79,7 +79,7 @@ impl HeightMap {
             }
         }
 
-        *(&mut path_map[path[0]]) = 'E';
+        path_map[path[0]] = 'E';
         println!("{}", path_map);
 
         // Resulting path includes start which we shouldn't count.

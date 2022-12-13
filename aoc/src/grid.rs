@@ -25,6 +25,14 @@ impl<T: Clone> Grid<T> {
         Self(vec![vec![value; width.into()]; height.into()])
     }
 
+    pub fn width(&self) -> usize {
+        self.0[0].len()
+    }
+
+    pub fn height(&self) -> usize {
+        self.0.len()
+    }
+
     pub fn get(&self, index: Point) -> Option<&T> {
         self.0.get(index.row)?.get(index.col)
     }
@@ -37,7 +45,7 @@ impl<T: Clone> Grid<T> {
         let grid = self
             .0
             .iter()
-            .map(|row| row.iter().map(|cell| f(cell)).collect())
+            .map(|row| row.iter().map(&mut f).collect())
             .collect();
 
         Grid(grid)
@@ -52,14 +60,6 @@ impl<T: Clone> Grid<T> {
         })
     }
 
-    pub fn width(&self) -> usize {
-        self.0[0].len()
-    }
-
-    pub fn height(&self) -> usize {
-        self.0.len()
-    }
-
     pub fn cells_mut(&mut self) -> impl Iterator<Item = (Point, &mut T)> {
         self.0.iter_mut().enumerate().flat_map(|(row, row_vec)| {
             row_vec
@@ -69,10 +69,43 @@ impl<T: Clone> Grid<T> {
         })
     }
 
+    pub fn edge_cells(&self) -> impl Iterator<Item = (Point, &T)> {
+        // This could obviously be done much more efficiently.
+        let last_row = self.height() - 1;
+        let last_col = self.width() - 1;
+        self.cells().filter(move |(point, _)| {
+            point.row == 0 || point.row == last_row || point.col == 0 || point.col == last_col
+        })
+    }
+
+    pub fn edge_cells_mut(&mut self) -> impl Iterator<Item = (Point, &mut T)> {
+        let last_row = self.height() - 1;
+        let last_col = self.width() - 1;
+        self.cells_mut().filter(move |(point, _)| {
+            point.row == 0 || point.row == last_row || point.col == 0 || point.col == last_col
+        })
+    }
+
     pub fn straight_neighbors(&self, point: Point) -> impl Iterator<Item = Point> + '_ {
         point
             .straight_neighbors()
             .filter(|nb| nb.row < self.height() && nb.col < self.width())
+    }
+
+    pub fn scan(&self, start: Point, direction: PointDiff) -> Scan<T> {
+        Scan {
+            grid: self,
+            current: Some(start),
+            direction,
+        }
+    }
+
+    pub fn scan_mut(&mut self, start: Point, direction: PointDiff) -> ScanMut<T> {
+        ScanMut {
+            grid: self,
+            current: Some(start),
+            direction,
+        }
     }
 }
 
@@ -292,6 +325,49 @@ impl Iterator for Neighbors {
         }
 
         item
+    }
+}
+
+pub struct Scan<'a, T: Clone> {
+    grid: &'a Grid<T>,
+    current: Option<Point>,
+    direction: PointDiff,
+}
+
+impl<'a, T: Clone> Iterator for Scan<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = self.grid.get(self.current?)?;
+        self.current = if let Some(p) = self.current {
+            p.add_diff(self.direction)
+        } else {
+            None
+        };
+
+        Some(result)
+    }
+}
+
+pub struct ScanMut<'a, T: Clone> {
+    grid: &'a mut Grid<T>,
+    current: Option<Point>,
+    direction: PointDiff,
+}
+
+impl<'a, T: Clone> Iterator for ScanMut<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = self.grid.get_mut(self.current?)?;
+        self.current = if let Some(p) = self.current {
+            p.add_diff(self.direction)
+        } else {
+            None
+        };
+
+        // Work around borrow checker limitation.
+        unsafe { Some(&mut *(result as *mut T)) }
     }
 }
 

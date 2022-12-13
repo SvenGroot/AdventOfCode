@@ -46,15 +46,18 @@ impl TreeGrid {
     }
 
     pub fn count_visible(&mut self) -> u32 {
-        for (col, dir) in [(self.0.width() - 1, PointDiff::LEFT), (0, PointDiff::RIGHT)] {
-            for row in 0..self.0.height() {
-                self.check_visible(Point::new(row, col), dir);
+        let edge: Vec<_> = self.0.edge_cells().map(|(point, _)| point).collect();
+        for point in edge {
+            if point.row() == 0 {
+                self.check_visible(point, PointDiff::DOWN);
+            } else if point.row() == self.0.height() - 1 {
+                self.check_visible(point, PointDiff::UP);
             }
-        }
 
-        for (row, dir) in [(self.0.height() - 1, PointDiff::UP), (0, PointDiff::DOWN)] {
-            for col in 0..self.0.width() {
-                self.check_visible(Point::new(row, col), dir);
+            if point.col() == 0 {
+                self.check_visible(point, PointDiff::RIGHT);
+            } else if point.col() == self.0.width() - 1 {
+                self.check_visible(point, PointDiff::LEFT);
             }
         }
 
@@ -73,18 +76,11 @@ impl TreeGrid {
     }
 
     fn check_visible(&mut self, start: Point, dir: PointDiff) {
-        let mut current = start;
         let mut max_height = None;
-        while let Some(tree) = self.0.get_mut(current) {
+        for tree in self.0.scan_mut(start, dir) {
             if max_height.is_none() || max_height.unwrap() < tree.height {
                 tree.visible = true;
                 max_height = Some(tree.height);
-            }
-
-            if let Some(next) = current.add_diff(dir) {
-                current = next;
-            } else {
-                break;
             }
         }
     }
@@ -100,21 +96,9 @@ impl TreeGrid {
         let height = self.0[point].height;
 
         let mut distance = 0;
-        let mut current = if let Some(next) = point.add_diff(dir) {
-            next
-        } else {
-            return 0;
-        };
-
-        while let Some(tree) = self.0.get(current) {
+        for tree in self.0.scan(point, dir).skip(1) {
             distance += 1;
             if tree.height >= height {
-                break;
-            }
-
-            if let Some(next) = current.add_diff(dir) {
-                current = next;
-            } else {
                 break;
             }
         }
