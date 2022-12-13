@@ -1,3 +1,4 @@
+pub mod dijkstra;
 pub mod sliding_window;
 
 use std::{

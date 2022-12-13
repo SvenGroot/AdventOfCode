@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 use aoc::{get_input, Lcm};
-use std::{fmt::Display, mem::replace, str::FromStr};
+use std::{fmt::Display, mem::take, str::FromStr};
 
 fn main() {
     const PATH: &str = "input/day11.txt";
@@ -108,7 +108,7 @@ impl Monkey {
     }
 
     fn inspect_items(&mut self, worry_drop: usize, worry_max: usize) -> Vec<(usize, usize)> {
-        let items = replace(&mut self.items, Vec::new());
+        let items = take(&mut self.items);
         items
             .iter()
             .map(|worry| {
@@ -149,12 +149,8 @@ impl MonkeyGame {
     fn parse(path: &str, worry_drop: usize) -> Self {
         let mut iter = get_input(path);
         let mut monkeys = Vec::new();
-        loop {
-            if let Some(monkey) = Monkey::parse(&mut iter) {
-                monkeys.push(monkey);
-            } else {
-                break;
-            }
+        while let Some(monkey) = Monkey::parse(&mut iter) {
+            monkeys.push(monkey);
         }
 
         // Use the least common multiple of the division tests to keep the worry values low.
