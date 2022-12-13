@@ -2,6 +2,7 @@
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 use aoc::dijkstra::Graph;
+use aoc::grid::{grid_from_file, Grid, Point, PointDiff};
 use aoc::sliding_window::HasSlidingWindow;
 use aoc::{aoc_input, get_input};
 use std::path::Path;
@@ -23,12 +24,9 @@ fn part2(path: impl AsRef<Path>) -> usize {
     map.shortest_path_from_lowest()
 }
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Default)]
-struct Point(isize, isize);
-
 #[derive(Clone)]
 struct HeightMap {
-    map: Vec<Vec<u8>>,
+    map: Grid<u8>,
     start: Point,
     end: Point,
     invert: bool,
@@ -38,26 +36,20 @@ impl HeightMap {
     fn parse(path: impl AsRef<Path>) -> Self {
         let mut start = Point::default();
         let mut end = Point::default();
-        let map = get_input(path)
-            .enumerate()
-            .map(|(row, line)| {
-                line.as_bytes()
-                    .iter()
-                    .enumerate()
-                    .map(|(col, ch)| match ch {
-                        b'S' => {
-                            start = Point(row as isize, col as isize);
-                            0
-                        }
-                        b'E' => {
-                            end = Point(row as isize, col as isize);
-                            25
-                        }
-                        ch => ch - b'a',
-                    })
-                    .collect()
-            })
-            .collect();
+        let mut map = grid_from_file(path);
+        for (point, height) in map.cells_mut() {
+            match height {
+                b'S' => {
+                    start = point;
+                    *height = b'a';
+                }
+                b'E' => {
+                    end = point;
+                    *height = b'z';
+                }
+                _ => (),
+            }
+        }
 
         Self {
             map,
@@ -68,55 +60,46 @@ impl HeightMap {
     }
 
     fn shortest_path(&self) -> usize {
+        // We're getting the path in reverse because the height check is reversed to make part 2 easier.
         let path = aoc::dijkstra::shortest_path(self, &self.end, &self.start);
-        let mut path_map = self.clone();
-        for row in path_map.map.iter_mut() {
-            for col in row.iter_mut() {
-                *col = b'.';
-            }
-        }
+        let mut path_map = Grid::new(
+            self.map.height().try_into().unwrap(),
+            self.map.width().try_into().unwrap(),
+            '.',
+        );
 
         for p in path.as_slice().sliding_window(2) {
-            *path_map.get_mut(&p[0]).unwrap() = match (p[1].0 - p[0].0, p[1].1 - p[0].1) {
-                (-1, 0) => b'^',
-                (1, 0) => b'v',
-                (0, -1) => b'<',
-                (0, 1) => b'>',
+            // The path is backwards!
+            *path_map.get_mut(p[1]).unwrap() = match p[0].diff(p[1]).unwrap() {
+                PointDiff::UP => '^',
+                PointDiff::DOWN => 'v',
+                PointDiff::LEFT => '<',
+                PointDiff::RIGHT => '>',
                 _ => unreachable!(),
             }
         }
 
-        *path_map.get_mut(path.last().unwrap()).unwrap() = b'E';
-        for row in path_map.map.iter_mut() {
-            for col in row.iter_mut() {
-                print!("{}", *col as char)
-            }
-
-            println!();
-        }
+        *(&mut path_map[path[0]]) = 'E';
+        println!("{}", path_map);
 
         // Resulting path includes start which we shouldn't count.
         path.len() - 1
     }
 
     fn shortest_path_from_lowest(&self) -> usize {
-        // Invert the height check for neighbors because we're walking from the end to all points.
         let mut map = self.clone();
         map.invert = true;
 
-        // Calculate all paths starting at the end.
+        // Calculate all paths starting at the end (height check is reversed to allow this).
         let info = aoc::dijkstra::shortest_paths(&map, &self.end);
 
         // See which is the shortest from a square of height 0.
         let mut min = usize::MAX;
-        for (row, values) in self.map.iter().enumerate() {
-            for (col, height) in values.iter().enumerate() {
-                if *height == 0 {
-                    let p = Point(row as isize, col as isize);
-                    let distance = info[&p].distance;
-                    if distance < min {
-                        min = distance;
-                    }
+        for (point, height) in self.map.cells() {
+            if *height == b'a' {
+                let distance = info[&point].distance;
+                if distance < min {
+                    min = distance;
                 }
             }
         }
@@ -124,52 +107,29 @@ impl HeightMap {
         min
     }
 
-    fn get(&self, p: &Point) -> Option<u8> {
-        self.map.get(p.0 as usize)?.get(p.1 as usize).copied()
+    fn get(&self, p: Point) -> Option<u8> {
+        self.map.get(p).copied()
     }
 
-    fn get_mut(&mut self, p: &Point) -> Option<&mut u8> {
-        self.map.get_mut(p.0 as usize)?.get_mut(p.1 as usize)
+    fn get_mut(&mut self, p: Point) -> Option<&mut u8> {
+        self.map.get_mut(p)
     }
 }
 
 impl Graph<Point> for HeightMap {
     fn vertices(&self) -> std::collections::HashSet<Point> {
-        self.map
-            .iter()
-            .enumerate()
-            .flat_map(|(row, items)| {
-                items
-                    .iter()
-                    .enumerate()
-                    .map(move |(col, _)| Point(row as isize, col as isize))
-            })
-            .collect()
+        self.map.cells().map(|(point, _)| point).collect()
     }
 
     fn neighbors(&self, v: &Point) -> Vec<Point> {
-        let height = self.get(v).unwrap();
-        let mut result = Vec::new();
-        for offset in [-1, 1] {
-            let neighbor = Point(v.0 + offset, v.1);
-            if let Some(candidate) = self.get(&neighbor) {
-                // I hate this.
-                if height <= candidate + 1 {
-                    result.push(neighbor)
-                }
-            }
-        }
-
-        for offset in [-1, 1] {
-            let neighbor = Point(v.0, v.1 + offset);
-            if let Some(candidate) = self.get(&neighbor) {
-                if height <= candidate + 1 {
-                    result.push(neighbor)
-                }
-            }
-        }
-
-        result
+        let height = self.get(*v).unwrap();
+        self.map
+            .straight_neighbors(*v)
+            .filter(|nb| {
+                // This is backwards to make part 2 easier.
+                height <= self.map[*nb] + 1
+            })
+            .collect()
     }
 }
 

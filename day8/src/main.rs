@@ -2,7 +2,10 @@
 //
 // Not super happy with this one. I think a cleaner solution is possible, maybe with some more code
 // reuse between both parts, but I don't feel like spending more time on this.
-use aoc::get_input;
+use aoc::grid::grid_from_file;
+use aoc::grid::Grid;
+use aoc::grid::Point;
+use aoc::grid::PointDiff;
 
 fn main() {
     const PATH: &str = "input/day8.txt";
@@ -11,15 +14,16 @@ fn main() {
 }
 
 fn part1(path: &str) -> u32 {
-    let mut grid = Grid::parse(path);
+    let mut grid = TreeGrid::parse(path);
     grid.count_visible()
 }
 
 fn part2(path: &str) -> u32 {
-    let grid = Grid::parse(path);
+    let grid = TreeGrid::parse(path);
     grid.get_max_scenic_score()
 }
 
+#[derive(Clone, Copy)]
 struct Tree {
     height: u8,
     visible: bool,
@@ -34,109 +38,85 @@ impl Tree {
     }
 }
 
-struct Grid(Vec<Vec<Tree>>);
+struct TreeGrid(Grid<Tree>);
 
-impl Grid {
+impl TreeGrid {
     pub fn parse(path: &str) -> Self {
-        let grid = get_input(path)
-            .map(|line| {
-                line.as_bytes()
-                    .iter()
-                    .map(|ch| Tree::new(ch - b'0'))
-                    .collect()
-            })
-            .collect();
-
-        Self(grid)
+        Self(grid_from_file(path).map(|cell| Tree::new(cell - b'0')))
     }
 
     pub fn count_visible(&mut self) -> u32 {
-        for (col, col_dir) in [(self.0[0].len() - 1, -1), (0, 1)] {
-            for row in 0..self.0.len() {
-                self.check_visible(row, col, 0, col_dir);
+        for (col, dir) in [(self.0.width() - 1, PointDiff::LEFT), (0, PointDiff::RIGHT)] {
+            for row in 0..self.0.height() {
+                self.check_visible(Point::new(row, col), dir);
             }
         }
 
-        for (row, row_dir) in [(self.0.len() - 1, -1), (0, 1)] {
-            for col in 0..self.0[0].len() {
-                self.check_visible(row, col, row_dir, 0);
+        for (row, dir) in [(self.0.height() - 1, PointDiff::UP), (0, PointDiff::DOWN)] {
+            for col in 0..self.0.width() {
+                self.check_visible(Point::new(row, col), dir);
             }
         }
 
         self.0
-            .iter()
-            .map(|row| row.iter().map(|tree| u32::from(tree.visible)).sum::<u32>())
+            .cells()
+            .map(|(_, tree)| u32::from(tree.visible))
             .sum()
     }
 
     pub fn get_max_scenic_score(&self) -> u32 {
-        let mut max = 0;
-        // No need to check the edges; they're all 0.
-        for row in 1..self.0.len() - 1 {
-            for col in 1..self.0[row].len() - 1 {
-                let score = self.get_scenic_score(row, col);
-                if score > max {
-                    max = score;
-                }
-            }
-        }
-
-        max
+        self.0
+            .cells()
+            .map(|(point, _)| self.get_scenic_score(point))
+            .max()
+            .unwrap()
     }
 
-    fn check_visible(&mut self, row: usize, col: usize, row_dir: isize, col_dir: isize) {
-        let mut row: isize = row.try_into().unwrap();
-        let mut col: isize = col.try_into().unwrap();
+    fn check_visible(&mut self, start: Point, dir: PointDiff) {
+        let mut current = start;
         let mut max_height = None;
-        while row >= 0
-            && (row as usize) < self.0.len()
-            && col >= 0
-            && (col as usize) < self.0[row as usize].len()
-        {
-            let tree = &mut self.0[row as usize][col as usize];
+        while let Some(tree) = self.0.get_mut(current) {
             if max_height.is_none() || max_height.unwrap() < tree.height {
                 tree.visible = true;
                 max_height = Some(tree.height);
             }
 
-            row += row_dir;
-            col += col_dir;
+            if let Some(next) = current.add_diff(dir) {
+                current = next;
+            } else {
+                break;
+            }
         }
     }
 
-    fn get_scenic_score(&self, row: usize, col: usize) -> u32 {
-        let mut score = 1;
-        for col_dir in [-1, 1] {
-            score *= self.get_viewing_distance(row, col, 0, col_dir);
-        }
-
-        for row_dir in [-1, 1] {
-            score *= self.get_viewing_distance(row, col, row_dir, 0);
-        }
-
-        score
+    fn get_scenic_score(&self, point: Point) -> u32 {
+        PointDiff::STRAIGHT_NEIGHBORS
+            .iter()
+            .map(|dir| self.get_viewing_distance(point, *dir))
+            .product()
     }
 
-    fn get_viewing_distance(&self, row: usize, col: usize, row_dir: isize, col_dir: isize) -> u32 {
-        let height = self.0[row][col].height;
-        let mut row: isize = row.try_into().unwrap();
-        let mut col: isize = col.try_into().unwrap();
-        row += row_dir;
-        col += col_dir;
+    fn get_viewing_distance(&self, point: Point, dir: PointDiff) -> u32 {
+        let height = self.0[point].height;
 
         let mut distance = 0;
-        while row >= 0
-            && (row as usize) < self.0.len()
-            && col >= 0
-            && (col as usize) < self.0[row as usize].len()
-        {
+        let mut current = if let Some(next) = point.add_diff(dir) {
+            next
+        } else {
+            return 0;
+        };
+
+        while let Some(tree) = self.0.get(current) {
             distance += 1;
-            if self.0[row as usize][col as usize].height >= height {
+            if tree.height >= height {
                 break;
             }
 
-            row += row_dir;
-            col += col_dir;
+            if let Some(next) = current.add_diff(dir) {
+                current = next;
+            } else {
+                break;
+            }
         }
 
         distance
