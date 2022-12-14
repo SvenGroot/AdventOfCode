@@ -1,10 +1,12 @@
 use std::{
     convert::TryFrom,
     fmt::Display,
-    num::{NonZeroUsize, TryFromIntError},
+    num::{NonZeroUsize, ParseIntError, TryFromIntError},
     ops::{Add, AddAssign, Index, IndexMut, Sub, SubAssign},
     path::Path,
+    str::FromStr,
 };
+use thiserror::Error;
 
 use crate::get_input;
 
@@ -144,7 +146,7 @@ pub struct Point {
 }
 
 impl Point {
-    pub fn new(row: usize, col: usize) -> Self {
+    pub const fn new(row: usize, col: usize) -> Self {
         Self { row, col }
     }
 
@@ -179,6 +181,21 @@ impl Point {
             neighbors: &PointDiff::STRAIGHT_NEIGHBORS,
             index: 0,
         }
+    }
+
+    pub fn line_to(&self, other: Point) -> Option<Line> {
+        // One of them must match, can't handle non-straight lines yet.
+        if self.row != other.row && self.col != other.col {
+            return None;
+        }
+
+        let direction = other.diff(*self)?.signum();
+        Some(Line {
+            current: *self,
+            end: other,
+            direction,
+            done: false,
+        })
     }
 }
 
@@ -229,6 +246,27 @@ impl TryFrom<PointDiff> for Point {
     }
 }
 
+#[derive(Error, Debug)]
+pub enum ParsePointError {
+    #[error("doesn't have a delimiter")]
+    MissingDelimiter,
+    #[error("error parsing int")]
+    ParseIntError(#[from] ParseIntError),
+}
+
+// Parses from "col,row" format
+impl FromStr for Point {
+    type Err = ParsePointError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (col, row) = s.split_once(',').ok_or(ParsePointError::MissingDelimiter)?;
+        Ok(Self {
+            row: row.parse()?,
+            col: col.parse()?,
+        })
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Debug)]
 pub struct PointDiff {
     row: isize,
@@ -240,6 +278,10 @@ impl PointDiff {
     pub const DOWN: PointDiff = PointDiff::new(1, 0);
     pub const LEFT: PointDiff = PointDiff::new(0, -1);
     pub const RIGHT: PointDiff = PointDiff::new(0, 1);
+    pub const UP_LEFT: PointDiff = PointDiff::new(-1, -1);
+    pub const UP_RIGHT: PointDiff = PointDiff::new(-1, 1);
+    pub const DOWN_LEFT: PointDiff = PointDiff::new(1, -1);
+    pub const DOWN_RIGHT: PointDiff = PointDiff::new(1, 1);
 
     pub const STRAIGHT_NEIGHBORS: [PointDiff; 4] = [Self::UP, Self::RIGHT, Self::DOWN, Self::LEFT];
 
@@ -257,6 +299,10 @@ impl PointDiff {
 
     pub fn into_point(self) -> Option<Point> {
         self.try_into().ok()
+    }
+
+    pub fn signum(&self) -> Self {
+        Self::new(self.row.signum(), self.col.signum())
     }
 }
 
@@ -368,6 +414,29 @@ impl<'a, T: Clone> Iterator for ScanMut<'a, T> {
 
         // Work around borrow checker limitation.
         unsafe { Some(&mut *(result as *mut T)) }
+    }
+}
+
+pub struct Line {
+    current: Point,
+    end: Point,
+    direction: PointDiff,
+    done: bool,
+}
+
+impl Iterator for Line {
+    type Item = Point;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        (!self.done).then(|| {
+            let result = self.current;
+            self.done = self.current == self.end;
+            if !self.done {
+                self.current = self.current.add_diff(self.direction).unwrap()
+            }
+
+            result
+        })
     }
 }
 
