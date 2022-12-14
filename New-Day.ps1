@@ -16,6 +16,7 @@ Get-Content "$source/Cargo.toml" | ForEach-Object {
 } | Set-Content "$dest/Cargo.toml"
 
 New-Item "$PSScriptRoot/input/sample/day$Day.txt" | Out-Null
+# I'd try to download it but it requires you're logged in.
 New-Item "$PSScriptRoot/input/day$Day.txt" | Out-Null
 
 "Created day $Day"
