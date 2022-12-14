@@ -1,12 +1,8 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
+use aoc::aoc_input;
 use aoc::dijkstra::Graph;
 use aoc::grid::{grid_from_file, Grid, Point, PointDiff};
 use aoc::sliding_window::HasSlidingWindow;
-use aoc::{aoc_input, get_input};
 use std::path::Path;
-use std::str::FromStr;
 
 fn main() {
     let path = aoc_input();
@@ -29,7 +25,6 @@ struct HeightMap {
     map: Grid<u8>,
     start: Point,
     end: Point,
-    invert: bool,
 }
 
 impl HeightMap {
@@ -51,12 +46,7 @@ impl HeightMap {
             }
         }
 
-        Self {
-            map,
-            start,
-            end,
-            invert: false,
-        }
+        Self { map, start, end }
     }
 
     fn shortest_path(&self) -> usize {
@@ -87,11 +77,8 @@ impl HeightMap {
     }
 
     fn shortest_path_from_lowest(&self) -> usize {
-        let mut map = self.clone();
-        map.invert = true;
-
         // Calculate all paths starting at the end (height check is reversed to allow this).
-        let info = aoc::dijkstra::shortest_paths(&map, &self.end);
+        let info = aoc::dijkstra::shortest_paths(self, &self.end);
 
         // See which is the shortest from a square of height 0.
         self.map
@@ -103,10 +90,6 @@ impl HeightMap {
 
     fn get(&self, p: Point) -> Option<u8> {
         self.map.get(p).copied()
-    }
-
-    fn get_mut(&mut self, p: Point) -> Option<&mut u8> {
-        self.map.get_mut(p)
     }
 }
 
