@@ -94,17 +94,11 @@ impl HeightMap {
         let info = aoc::dijkstra::shortest_paths(&map, &self.end);
 
         // See which is the shortest from a square of height 0.
-        let mut min = usize::MAX;
-        for (point, height) in self.map.cells() {
-            if *height == b'a' {
-                let distance = info[&point].distance;
-                if distance < min {
-                    min = distance;
-                }
-            }
-        }
-
-        min
+        self.map
+            .cells()
+            .filter_map(|(point, height)| (*height == b'a').then_some(info[&point].distance))
+            .min()
+            .unwrap()
     }
 
     fn get(&self, p: Point) -> Option<u8> {
