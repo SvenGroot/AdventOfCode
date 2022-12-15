@@ -304,6 +304,10 @@ impl PointDiff {
     pub fn signum(&self) -> Self {
         Self::new(self.row.signum(), self.col.signum())
     }
+
+    pub fn abs(&self) -> Self {
+        Self::new(self.row.abs(), self.col.abs())
+    }
 }
 
 impl TryFrom<Point> for PointDiff {

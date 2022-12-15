@@ -6,3 +6,5 @@ authors = ["Sven Groot"]
 
 [workspace.dependencies]
 anyhow = "1.0.66"
+text_io = "0.1.12"
+aoc = { path = "aoc" }
