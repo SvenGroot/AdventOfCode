@@ -7,7 +7,7 @@ where
     Vertex: Copy + Eq + Hash,
 {
     fn vertices(&self) -> HashSet<Vertex>;
-    fn neighbors(&self, v: &Vertex) -> Vec<Vertex>;
+    fn neighbors(&self, v: &Vertex) -> Vec<(Vertex, usize)>;
 }
 
 pub fn shortest_path<Vertex>(
@@ -71,9 +71,9 @@ where
             break;
         }
 
-        for neighbor in graph.neighbors(&closest) {
+        for (neighbor, weight) in graph.neighbors(&closest) {
             if vertices.contains(&neighbor) {
-                let alt = distance + 1; // No weight support
+                let alt = distance + weight; // No weight support
                 let neighbor_info = info.get_mut(&neighbor).unwrap();
                 if alt < neighbor_info.distance {
                     neighbor_info.distance = alt;

@@ -98,13 +98,13 @@ impl Graph<Point> for HeightMap {
         self.map.cells().map(|(point, _)| point).collect()
     }
 
-    fn neighbors(&self, v: &Point) -> Vec<Point> {
+    fn neighbors(&self, v: &Point) -> Vec<(Point, usize)> {
         let height = self.get(*v).unwrap();
         self.map
             .straight_neighbors(*v)
-            .filter(|nb| {
+            .filter_map(|nb| {
                 // This is backwards to make part 2 easier.
-                height <= self.map[*nb] + 1
+                (height <= self.map[nb] + 1).then_some((nb, 1))
             })
             .collect()
     }
