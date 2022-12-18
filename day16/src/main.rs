@@ -1,8 +1,9 @@
+#![allow(clippy::too_many_arguments)]
 use std::{
-    collections::BTreeMap,
-    fmt::{Debug, Display},
+    borrow::Cow,
+    collections::{BTreeMap, HashMap},
+    fmt::Debug,
     path::Path,
-    str::FromStr,
 };
 
 use aoc::{
@@ -10,7 +11,11 @@ use aoc::{
     dijkstra::{shortest_paths, Graph},
     get_input,
 };
+use itertools::Itertools;
 use text_io::scan;
+
+const TOTAL_TIME: usize = 30;
+const PART2_TIME: usize = 26;
 
 fn main() {
     let path = aoc_input();
@@ -22,43 +27,29 @@ fn part1(path: impl AsRef<Path>) -> usize {
     let mut pipes = PipeNetwork::from_file(path);
     pipes.collapse_graph();
     pipes.compute_reachable();
-    for valve in pipes.valves.values() {
-        println!("{:?}", valve);
-    }
     println!("Searching");
-    pipes.simulate()
+    pipes.simulate(TOTAL_TIME).0
 }
 
 fn part2(path: impl AsRef<Path>) -> usize {
-    get_input(path).map(|_| 0).sum()
+    let mut pipes = PipeNetwork::from_file(path);
+    pipes.collapse_graph();
+    pipes.compute_reachable();
+    println!("Searching");
+    let (_, best) = pipes.simulate(PART2_TIME);
+    best.iter()
+        .combinations(2)
+        .filter_map(|c| {
+            let (&path1, &flow1) = c[0];
+            let (&path2, &flow2) = c[1];
+            (path1 & path2 == 0).then_some(flow1 + flow2)
+        })
+        .max()
+        .unwrap()
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct ValveName(u32);
-
-impl FromStr for ValveName {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let a = (s.as_bytes()[0] - b'A') as u32;
-        let b = (s.as_bytes()[1] - b'A') as u32;
-        Ok(ValveName(a * 1000 + b))
-    }
-}
-
-impl Display for ValveName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl Debug for ValveName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let a = (self.0 / 1000) as u8 + b'A';
-        let b = (self.0 % 1000) as u8 + b'A';
-        write!(f, "{}{}", a as char, b as char)
-    }
-}
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+struct ValveName(u64);
 
 #[derive(Debug)]
 struct Valve {
@@ -68,10 +59,8 @@ struct Valve {
     open: bool,
 }
 
-impl FromStr for Valve {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl Valve {
+    fn from_str(s: &str, name_map: &mut HashMap<String, u64>, next_name: &mut u64) -> Self {
         let name: String;
         let flow_rate: usize;
         let (valve, neighbors) = s.split_once("; ").unwrap();
@@ -81,41 +70,67 @@ impl FromStr for Valve {
             .or_else(|| neighbors.strip_prefix("tunnel leads to valve "))
             .unwrap();
 
-        Ok(Self {
-            name: name.parse().unwrap(),
+        let name = Self::get_name(Cow::Owned(name), name_map, next_name);
+
+        Self {
+            name,
             flow_rate,
             neighbors: neighbors
                 .split(", ")
-                .map(|nb| (nb.parse().unwrap(), 1))
+                .map(|nb| (Self::get_name(Cow::Borrowed(nb), name_map, next_name), 1))
                 .collect(),
             open: false,
-        })
+        }
+    }
+
+    fn get_name(
+        name: Cow<str>,
+        name_map: &mut HashMap<String, u64>,
+        next_name: &mut u64,
+    ) -> ValveName {
+        let name = name_map
+            .get(name.as_ref())
+            .copied()
+            .or_else(|| {
+                let new_name = *next_name;
+                name_map.insert(name.into_owned(), new_name);
+                *next_name <<= 1;
+                Some(new_name)
+            })
+            .unwrap();
+
+        ValveName(name)
     }
 }
 
 #[derive(Debug)]
 struct PipeNetwork {
     valves: BTreeMap<ValveName, Valve>,
+    start: ValveName,
 }
 
 impl PipeNetwork {
-    const TOTAL_TIME: usize = 30;
-
     pub fn from_file(path: impl AsRef<Path>) -> Self {
+        let mut name_map = HashMap::new();
+        let mut next_name = 1;
         let valves = get_input(path)
             .map(|line| {
-                let valve: Valve = line.parse().unwrap();
+                let valve = Valve::from_str(&line, &mut name_map, &mut next_name);
                 (valve.name, valve)
             })
             .collect();
 
-        Self { valves }
+        let start = name_map["AA"];
+        Self {
+            valves,
+            start: ValveName(start),
+        }
     }
 
     pub fn collapse_graph(&mut self) {
         let names: Vec<_> = self.valves.keys().copied().collect();
         for name in names {
-            if name.0 != 0 {
+            if name != self.start {
                 self.collapse_node(name)
             }
         }
@@ -156,45 +171,58 @@ impl PipeNetwork {
             .collect();
     }
 
-    pub fn simulate(&mut self) -> usize {
-        self.simulate_step(ValveName(0), 0, 0)
+    pub fn simulate(&mut self, time: usize) -> (usize, BTreeMap<u64, usize>) {
+        let mut best = BTreeMap::new();
+        let overall_best = self.simulate_step(self.start, time, 0, 0, 0, 0, &mut best);
+        (overall_best, best)
     }
 
-    fn simulate_step(&mut self, current: ValveName, elapsed: usize, last_step: usize) -> usize {
+    fn simulate_step(
+        &mut self,
+        current: ValveName,
+        remaining: usize,
+        last_step: usize,
+        mut flow: usize,
+        mut rate: usize,
+        mut opened: u64,
+        best: &mut BTreeMap<u64, usize>,
+    ) -> usize {
         // Get the total flow rate this minute.
-        let rate: usize = self.current_rate();
+        flow += rate * last_step;
 
         let mut valve = self.valves.get_mut(&current).unwrap();
         valve.open = true;
+        rate += valve.flow_rate;
 
-        let remaining = Self::TOTAL_TIME - elapsed;
+        // Don't include start in the bitmap.
+        if current != self.start {
+            opened |= current.0;
+        }
+
+        let current_best = best.get(&opened).copied().unwrap_or(0);
+        let current_value = flow + rate * remaining;
+        if current_value > current_best {
+            best.insert(opened, current_value);
+        }
+
         let neighbors = valve.neighbors.clone();
         let max = neighbors
             .iter()
             .filter_map(|(&nb, &weight)| {
                 let weight = weight + 1;
                 let v = &self.valves[&nb];
-                (!v.open && weight <= remaining)
-                    .then(|| self.simulate_step(nb, elapsed + weight, weight))
+                (!v.open && weight <= remaining).then(|| {
+                    self.simulate_step(nb, remaining - weight, weight, flow, rate, opened, best)
+                })
             })
             .max();
 
-        let flow = rate * last_step;
+        self.valves.get_mut(&current).unwrap().open = false;
         if let Some(max) = max {
-            self.valves.get_mut(&current).unwrap().open = false;
-            flow + max
+            max
         } else {
-            let rate = self.current_rate();
-            self.valves.get_mut(&current).unwrap().open = false;
             flow + (remaining) * rate
         }
-    }
-
-    fn current_rate(&self) -> usize {
-        self.valves
-            .values()
-            .filter_map(|v| v.open.then_some(v.flow_rate))
-            .sum()
     }
 }
 
@@ -225,6 +253,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(aoc_sample_input()));
+        assert_eq!(1707, part2(aoc_sample_input()));
     }
 }

@@ -8,4 +8,5 @@ authors.workspace = true
 
 [dependencies]
 aoc.workspace = true
+itertools = "0.10.5"
 text_io.workspace = true
