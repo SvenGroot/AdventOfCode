@@ -2,7 +2,6 @@ pub mod dijkstra;
 pub mod grid;
 pub mod iterator;
 pub mod nested_list;
-pub mod sliding_window;
 
 use std::{
     env::current_exe,

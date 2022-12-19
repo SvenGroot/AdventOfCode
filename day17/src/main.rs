@@ -1,7 +1,12 @@
-use std::{fmt::Display, path::Path};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    hash::{BuildHasher, Hash, Hasher},
+    path::Path,
+};
 
 use aoc::{
-    aoc_input, get_input, get_input_single, get_input_vec,
+    aoc_input, get_input_single, get_input_vec,
     grid::{Point, PointDiff},
     iterator::{infinite_repeat, InfiniteRepeat},
 };
@@ -13,25 +18,20 @@ fn main() {
 }
 
 fn part1(path: impl AsRef<Path>) -> usize {
-    run(path, 2022, 10000)
+    run(path, 2022)
 }
 
 fn part2(path: impl AsRef<Path>) -> usize {
-    run(path, 1_000_000_000_000, 10_000_000)
+    run(path, 1_000_000_000_000)
 }
 
-fn run(path: impl AsRef<Path>, rounds: usize, prune_interval: usize) -> usize {
+fn run(path: impl AsRef<Path>, rounds: usize) -> usize {
     let rocks = Rock::get_rocks();
     let jets = get_jets(path);
     let mut rocks_repeater = infinite_repeat(&rocks);
     let mut jets_repeater = infinite_repeat(&jets);
     let mut chamber = Chamber::new();
-    chamber.drop_rocks(
-        rounds,
-        prune_interval,
-        &mut rocks_repeater,
-        &mut jets_repeater,
-    )
+    chamber.drop_rocks(rounds, &mut rocks_repeater, &mut jets_repeater)
 }
 
 #[derive(Clone)]
@@ -81,17 +81,38 @@ impl Chamber {
     fn drop_rocks(
         &mut self,
         rounds: usize,
-        prune_interval: usize,
         rocks: &mut InfiniteRepeat<Rock>,
         jets: &mut InfiniteRepeat<PointDiff>,
     ) -> usize {
-        for i in 0..rounds {
-            if i % prune_interval == 0 {
-                self.prune_bottom();
-                println!("{}: {}", i, self.offset);
-            }
+        let mut seen = HashMap::new();
+        let mut i = 0;
+        let mut check_cycles = true;
+        while i < rounds {
             self.drop_rock(rocks, jets);
-            // println!("{}", self);
+            if check_cycles && self.trim() {
+                let mut hasher = seen.hasher().build_hasher();
+                self.lines.hash(&mut hasher);
+                let hash = hasher.finish();
+                let key = (hash, rocks.index(), jets.index());
+                if let Some((prev, offset)) = seen.get(&key) {
+                    println!(
+                        "Found cycle at {}: {} from {}: {}",
+                        i, self.offset, prev, offset
+                    );
+
+                    let skip_size = i - prev;
+                    let skip = ((rounds - i) / skip_size) - 1;
+                    i += skip * skip_size + 1;
+                    self.offset += skip * (self.offset - offset);
+                    check_cycles = false;
+                    println!("Skipping to {}: {}", i, self.offset);
+                    continue;
+                } else {
+                    seen.insert(key, (i, self.offset));
+                }
+            }
+
+            i += 1;
         }
 
         self.top + self.offset
@@ -111,9 +132,6 @@ impl Chamber {
 
         let mut done = false;
         while !done {
-            //let mut c = self.clone();
-            //c.place_rock(rock, rock_pos);
-            // println!("{}", c);
             (rock_pos, done) = self.step_rock(rock, rock_pos, jets);
         }
 
@@ -166,28 +184,32 @@ impl Chamber {
         }
     }
 
-    fn prune_bottom(&mut self) {
-        let mut combined = 0;
-        let new_offset = self.lines.len()
-            - self
-                .lines
-                .iter()
-                .rev()
-                .position(|&line| {
-                    combined |= line;
-                    combined == 0b01111111
-                })
-                .unwrap_or(self.lines.len());
+    fn trim(&mut self) -> bool {
+        let mut new_offset = None;
+        for (index, window) in self.lines.as_slice().windows(4).enumerate().rev() {
+            let combined = window.iter().copied().reduce(|c, i| c | i).unwrap();
+            if combined == 0b01111111 {
+                new_offset = Some(index);
+                break;
+            }
+        }
 
-        self.offset += new_offset;
-        self.top -= new_offset;
-        self.lines = self.lines.split_off(new_offset);
+        if let Some(new_offset) = new_offset {
+            let new_offset = new_offset + 1;
+            self.offset += new_offset;
+            self.top -= new_offset;
+            self.lines = self.lines.split_off(new_offset);
+            self.lines.truncate(self.top);
+            true
+        } else {
+            false
+        }
     }
 }
 
 impl Display for Chamber {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for line in self.lines.iter().rev() {
+        for line in self.lines.iter().take(self.top).rev() {
             writeln!(f, "{:07b}", line.reverse_bits() >> 1)?
         }
 

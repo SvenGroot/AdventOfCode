@@ -13,6 +13,12 @@ impl<'a, T> Iterator for InfiniteRepeat<'a, T> {
     }
 }
 
+impl<'a, T> InfiniteRepeat<'a, T> {
+    pub fn index(&self) -> usize {
+        self.index
+    }
+}
+
 pub fn infinite_repeat<T>(items: &[T]) -> InfiniteRepeat<T> {
     InfiniteRepeat { items, index: 0 }
 }

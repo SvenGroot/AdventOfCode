@@ -3,7 +3,6 @@ use std::path::Path;
 use aoc::{
     aoc_input, get_input,
     grid::{Grid, Point, PointDiff},
-    sliding_window::HasSlidingWindow,
 };
 
 fn main() {
@@ -79,7 +78,7 @@ impl SandSimulator {
 
         // Draw the rock formations.
         for path in lines {
-            for pair in path.as_slice().sliding_window(2) {
+            for pair in path.as_slice().windows(2) {
                 for p in pair[0].line_to(pair[1]).unwrap() {
                     grid[p - offset] = '#';
                 }

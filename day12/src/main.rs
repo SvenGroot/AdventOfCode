@@ -1,7 +1,6 @@
 use aoc::aoc_input;
 use aoc::dijkstra::Graph;
 use aoc::grid::{grid_from_file, Grid, Point, PointDiff};
-use aoc::sliding_window::HasSlidingWindow;
 use std::path::Path;
 
 fn main() {
@@ -58,7 +57,7 @@ impl HeightMap {
             '.',
         );
 
-        for p in path.as_slice().sliding_window(2) {
+        for p in path.as_slice().windows(2) {
             // The path is backwards!
             *path_map.get_mut(p[1]).unwrap() = match p[0].diff(p[1]).unwrap() {
                 PointDiff::UP => '^',

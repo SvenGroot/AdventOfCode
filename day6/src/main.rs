@@ -2,7 +2,6 @@
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 
-use aoc::sliding_window::HasSlidingWindow;
 use aoc::{get_input, get_input_single};
 use std::{collections::HashSet, str::FromStr};
 
@@ -21,7 +20,7 @@ fn part2(path: &str) -> usize {
 }
 
 fn find_marker(text: &str, window_size: usize) -> usize {
-    for (index, window) in text.as_bytes().sliding_window(window_size).enumerate() {
+    for (index, window) in text.as_bytes().windows(window_size).enumerate() {
         if has_no_duplicates(window) {
             return index + window_size;
         }
