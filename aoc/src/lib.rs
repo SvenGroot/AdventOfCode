@@ -1,5 +1,6 @@
 pub mod dijkstra;
 pub mod grid;
+pub mod grid3d;
 pub mod iterator;
 pub mod nested_list;
 
