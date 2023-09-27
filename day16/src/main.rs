@@ -190,7 +190,7 @@ impl PipeNetwork {
         // Get the total flow rate this minute.
         flow += rate * last_step;
 
-        let mut valve = self.valves.get_mut(&current).unwrap();
+        let valve = self.valves.get_mut(&current).unwrap();
         valve.open = true;
         rate += valve.flow_rate;
 
