@@ -5,6 +5,8 @@ extern crate text_io;
 use std::{
     ops::{Add, Sub},
     path::Path,
+    sync::mpsc,
+    thread,
 };
 
 use aoc::{aoc_input, get_input};
@@ -16,7 +18,63 @@ fn main() {
 }
 
 fn part1(path: impl AsRef<Path>) -> usize {
-    let blueprints: Vec<_> = get_input(path).map(|line| {
+    let blueprints: Vec<_> = load_blueprints(path).collect();
+
+    let mut sum = 0;
+    for bp in &blueprints {
+        let sim = Simulator {
+            max_minute: 24,
+            capacity: Resources {
+                ore: 1,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let quality = bp.id as usize * sim.simulate(bp) as usize;
+        println!("Blueprint {} has quality {}", bp.id, quality);
+        sum += quality;
+    }
+
+    sum
+}
+
+// Pretty slow; took about 48 seconds.
+fn part2(path: impl AsRef<Path>) -> usize {
+    let blueprints: Vec<_> = load_blueprints(path).take(3).collect();
+
+    let (send, recv) = mpsc::channel();
+    for bp in blueprints {
+        let send = send.clone();
+
+        // Use a thread per blueprint to speed things up.
+        thread::spawn(move || {
+            let sim = Simulator {
+                max_minute: 32,
+                capacity: Resources {
+                    ore: 1,
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            let geodes = sim.simulate(&bp) as usize;
+            println!("Blueprint {} has output {}", bp.id, geodes);
+            send.send(geodes).unwrap();
+        });
+    }
+
+    drop(send);
+    let mut product = 1;
+    while let Ok(geodes) = recv.recv() {
+        product *= geodes;
+    }
+
+    product
+}
+
+fn load_blueprints(
+    path: impl AsRef<Path>,
+) -> std::iter::Map<impl Iterator<Item = String>, impl FnMut(String) -> Blueprint> {
+    get_input(path).map(|line| {
         let id: u32;
         let mut ore_robot = Robot::default();
         ore_robot.output.ore = 1;
@@ -34,29 +92,7 @@ fn part1(path: impl AsRef<Path>) -> usize {
             id,
             robots: [ore_robot, clay_robot, obs_robot, geode_robot]
         }
-    }).collect();
-
-    println!("{:?}", blueprints);
-
-    let mut sum = 0;
-    for bp in &blueprints {
-        let sim = Simulator {
-            capacity: Resources {
-                ore: 1,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-        let quality = bp.id as usize * sim.simulate(bp) as usize;
-        println!("Blueprint {} has quality {}", bp.id, quality);
-        sum += quality;
-    }
-
-    sum
-}
-
-fn part2(path: impl AsRef<Path>) -> usize {
-    get_input(path).map(|_| 0).sum()
+    })
 }
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -120,17 +156,19 @@ struct Simulator {
     total: Resources,
     capacity: Resources,
     minute: u32,
+    max_minute: u32,
 }
 
 impl Simulator {
     fn simulate(self, blueprint: &Blueprint) -> u32 {
-        if self.minute == 24 {
+        if self.minute == self.max_minute {
             return self.total.geodes;
         }
 
         // Don't build a new robot.
         let mut max_geodes = self.simulate_core(blueprint, Default::default());
         for robot in blueprint.robots {
+            // Only consider a robot if you couldn't have built it on the previous minute.
             if robot.can_build(&self.total) && !robot.can_build(&self.prev_total) {
                 let mut copy = self;
                 copy.total = copy.total - robot.cost;
@@ -163,6 +201,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(aoc_sample_input()));
+        assert_eq!(3472, part2(aoc_sample_input()));
     }
 }
