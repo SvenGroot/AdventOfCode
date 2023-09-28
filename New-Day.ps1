@@ -15,8 +15,12 @@ Get-Content "$source/Cargo.toml" | ForEach-Object {
     $_.Replace("day", "day$Day")
 } | Set-Content "$dest/Cargo.toml"
 
+Get-Content "$source/src/main.rs" | ForEach-Object {
+    $_.Replace("day/", "day/$Day")
+} | Set-Content "$dest/src/main.rs"
+
 New-Item "$PSScriptRoot/input/sample/day$Day.txt" | Out-Null
-# I'd try to download it but it requires you're logged in.
+# I'd try to download it but it requires that you're logged in.
 New-Item "$PSScriptRoot/input/day$Day.txt" | Out-Null
 
 "Created day $Day"

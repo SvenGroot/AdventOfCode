@@ -1,3 +1,4 @@
+pub mod circular_list;
 pub mod dijkstra;
 pub mod grid;
 pub mod grid3d;

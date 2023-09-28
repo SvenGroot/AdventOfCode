@@ -1,3 +1,4 @@
+// https://adventofcode.com/2022/day/
 use std::path::Path;
 
 use aoc::{aoc_input, get_input};
@@ -9,7 +10,7 @@ fn main() {
 }
 
 fn part1(path: impl AsRef<Path>) -> usize {
-    get_input(path).map(|_| 0).sum()
+    let data = get_input(path).map(|_| 0).sum()
 }
 
 fn part2(path: impl AsRef<Path>) -> usize {
