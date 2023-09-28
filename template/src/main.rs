@@ -10,7 +10,7 @@ fn main() {
 }
 
 fn part1(path: impl AsRef<Path>) -> usize {
-    let data = get_input(path).map(|_| 0).sum()
+    get_input(path).map(|_| 0).sum()
 }
 
 fn part2(path: impl AsRef<Path>) -> usize {
