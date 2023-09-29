@@ -22,6 +22,23 @@ pub fn grid_from_file(path: impl AsRef<Path>) -> Grid<u8> {
     Grid(grid)
 }
 
+pub fn grid_from_non_uniform_lines<I, S>(input: I, extend: u8) -> Grid<u8>
+where
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut grid: Vec<_> = input
+        .map(|line| line.as_ref().as_bytes().to_vec())
+        .collect();
+
+    let longest = grid.iter().map(|row| row.len()).max().unwrap();
+    for row in grid.iter_mut() {
+        row.resize(longest, extend);
+    }
+
+    Grid(grid)
+}
+
 impl<T: Clone> Grid<T> {
     pub fn new(height: NonZeroUsize, width: NonZeroUsize, value: T) -> Self {
         Self(vec![vec![value; width.into()]; height.into()])
@@ -94,6 +111,44 @@ impl<T: Clone> Grid<T> {
             .filter(|nb| nb.row < self.height() && nb.col < self.width())
     }
 
+    // Adds a diff to a point, only if the result is on the grid.
+    pub fn add_point(&self, point: Point, diff: PointDiff) -> Option<Point> {
+        let result = point.add_diff(diff)?;
+        (result.row < self.height() && result.col < self.width()).then_some(result)
+    }
+
+    pub fn find_in_row(&self, row: usize, predicate: impl FnMut(&T) -> bool) -> Option<Point> {
+        let col = self
+            .scan(Point::new(row, 0), PointDiff::RIGHT)
+            .position(predicate)?;
+
+        Some(Point::new(row, col))
+    }
+
+    pub fn rfind_in_row(&self, row: usize, predicate: impl FnMut(&T) -> bool) -> Option<Point> {
+        let col = self
+            .scan(Point::new(row, self.width() - 1), PointDiff::LEFT)
+            .position(predicate)?;
+
+        Some(Point::new(row, self.width() - col - 1))
+    }
+
+    pub fn find_in_col(&self, col: usize, predicate: impl FnMut(&T) -> bool) -> Option<Point> {
+        let row = self
+            .scan(Point::new(0, col), PointDiff::DOWN)
+            .position(predicate)?;
+
+        Some(Point::new(row, col))
+    }
+
+    pub fn rfind_in_col(&self, col: usize, predicate: impl FnMut(&T) -> bool) -> Option<Point> {
+        let row = self
+            .scan(Point::new(self.height() - 1, col), PointDiff::UP)
+            .position(predicate)?;
+
+        Some(Point::new(self.height() - row - 1, col))
+    }
+
     pub fn scan(&self, start: Point, direction: PointDiff) -> Scan<T> {
         Scan {
             grid: self,
@@ -163,8 +218,10 @@ impl Point {
     }
 
     pub fn add_diff(&self, diff: PointDiff) -> Option<Self> {
-        // Can use checked_add_signed once stable.
-        (self.into_diff()? + diff).into_point()
+        Some(Self {
+            row: self.row.checked_add_signed(diff.row)?,
+            col: self.col.checked_add_signed(diff.col)?,
+        })
     }
 
     pub fn diff(&self, other: Point) -> Option<PointDiff> {
@@ -308,6 +365,23 @@ impl PointDiff {
     pub fn abs(&self) -> Self {
         Self::new(self.row.abs(), self.col.abs())
     }
+
+    pub fn get_dir_char(&self) -> Option<char> {
+        Some(match *self {
+            PointDiff::UP => '^',
+            PointDiff::DOWN => 'v',
+            PointDiff::LEFT => '<',
+            PointDiff::RIGHT => '>',
+            _ => return None,
+        })
+    }
+
+    pub fn rotate(&self, rotation: Rotation) -> Self {
+        match rotation {
+            Rotation::Right => Self::new(self.col, -self.row),
+            Rotation::Left => Self::new(-self.col, self.row),
+        }
+    }
 }
 
 impl TryFrom<Point> for PointDiff {
@@ -355,6 +429,12 @@ impl SubAssign for PointDiff {
         self.row -= rhs.row;
         self.col -= rhs.col;
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Rotation {
+    Left,
+    Right,
 }
 
 pub struct Neighbors {
@@ -482,5 +562,38 @@ mod tests {
         assert_eq!(Some(Point::new(8, 19)), neighbors.next());
         assert_eq!(Some(Point::new(9, 18)), neighbors.next());
         assert_eq!(None, neighbors.next());
+    }
+
+    #[test]
+    fn test_non_uniform() {
+        let input = vec!["123".to_owned(), "12345".to_owned(), "12".to_owned()];
+        let grid = grid_from_non_uniform_lines(input.into_iter(), b' ');
+        assert_eq!(5, grid.width());
+        assert_eq!(3, grid.height());
+        assert_eq!(&[b'1', b'2', b'3', b' ', b' '], grid.0[0].as_slice());
+        assert_eq!(&[b'1', b'2', b'3', b'4', b'5'], grid.0[1].as_slice());
+        assert_eq!(&[b'1', b'2', b' ', b' ', b' '], grid.0[2].as_slice());
+    }
+
+    #[test]
+    fn test_rotate() {
+        let dir = PointDiff::RIGHT;
+        let dir = dir.rotate(Rotation::Right);
+        assert_eq!(PointDiff::DOWN, dir);
+        let dir = dir.rotate(Rotation::Right);
+        assert_eq!(PointDiff::LEFT, dir);
+        let dir = dir.rotate(Rotation::Right);
+        assert_eq!(PointDiff::UP, dir);
+        let dir = dir.rotate(Rotation::Right);
+        assert_eq!(PointDiff::RIGHT, dir);
+
+        let dir = dir.rotate(Rotation::Left);
+        assert_eq!(PointDiff::UP, dir);
+        let dir = dir.rotate(Rotation::Left);
+        assert_eq!(PointDiff::LEFT, dir);
+        let dir = dir.rotate(Rotation::Left);
+        assert_eq!(PointDiff::DOWN, dir);
+        let dir = dir.rotate(Rotation::Left);
+        assert_eq!(PointDiff::RIGHT, dir);
     }
 }
