@@ -9,12 +9,14 @@ fn main() {
     println!("Part 2: {}", part2(&path));
 }
 
+// What number does the monkey named "root" yell.
 fn part1(path: impl AsRef<Path>) -> isize {
     let monkeys: HashMap<_, _> = get_input(path).map(|line| Monkey::parse(&line)).collect();
     let result = monkeys["root"].get_number(&monkeys).unwrap();
     result
 }
 
+// What number does "humn" have to yell so that "root" has left == right.
 fn part2(path: impl AsRef<Path>) -> isize {
     let mut monkeys: HashMap<_, _> = get_input(path).map(|line| Monkey::parse(&line)).collect();
     monkeys.insert("humn".into(), Monkey(RefCell::new(MonkeyJob::Unknown)));
