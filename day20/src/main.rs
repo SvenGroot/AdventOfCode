@@ -48,7 +48,7 @@ fn part2(path: impl AsRef<Path>) -> isize {
                 .position(|&place| place == index)
                 .unwrap();
 
-            places.move_item(current_place, value as isize);
+            places.move_item(current_place, value);
         }
     }
 

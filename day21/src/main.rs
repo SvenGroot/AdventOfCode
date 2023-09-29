@@ -12,8 +12,7 @@ fn main() {
 // What number does the monkey named "root" yell.
 fn part1(path: impl AsRef<Path>) -> isize {
     let monkeys: HashMap<_, _> = get_input(path).map(|line| Monkey::parse(&line)).collect();
-    let result = monkeys["root"].get_number(&monkeys).unwrap();
-    result
+    monkeys["root"].get_number(&monkeys).unwrap()
 }
 
 // What number does "humn" have to yell so that "root" has left == right.
