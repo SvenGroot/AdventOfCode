@@ -6,10 +6,14 @@ pub trait Graph<Vertex>
 where
     Vertex: Copy + Eq + Hash,
 {
+    /// Gets a set of all vertices in the graph.
     fn vertices(&self) -> HashSet<Vertex>;
+
+    /// Gets all the neighbors and their weights for a particular vertex in the graph.
     fn neighbors(&self, v: &Vertex) -> Vec<(Vertex, usize)>;
 }
 
+/// Get the shortest path from source to dest.
 pub fn shortest_path<Vertex>(
     graph: &impl Graph<Vertex>,
     source: &Vertex,
@@ -19,6 +23,8 @@ where
     Vertex: Copy + Eq + Hash,
 {
     let info = shortest_paths_core(graph, source, Some(*dest));
+
+    // Walk the path from dest to source and then reverse it.
     let mut path = Vec::new();
     if info[dest].previous.is_some() || *dest == *source {
         let mut current = Some(*dest);
@@ -34,6 +40,7 @@ where
     path
 }
 
+/// Get the shortest parts from source to all other reachable vertices.
 pub fn shortest_paths<Vertex>(
     graph: &impl Graph<Vertex>,
     source: &Vertex,
@@ -90,7 +97,9 @@ pub struct VertexInfo<Vertex>
 where
     Vertex: Copy + Eq + Hash,
 {
+    // The previous step on the path from `source` to this vertex.
     pub previous: Option<Vertex>,
+    // The distance from source to this vertex.
     pub distance: usize,
 }
 
