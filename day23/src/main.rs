@@ -2,7 +2,7 @@
 use std::{collections::HashMap, fmt::Display, path::Path};
 
 use aoc::{
-    aoc_input, get_input,
+    aoc_input,
     grid::{Grid, GridBuilder, Point, PointDiff, Rectangle, SubGrid},
 };
 
@@ -12,18 +12,10 @@ fn main() {
     println!("Part 2: {}", part2(&path));
 }
 
+// Determines how many empty spaces there are between the elves after ten rounds of moving using the
+// provided rules.
 fn part1(path: impl AsRef<Path>) -> usize {
-    let mut grove = Grove(
-        GridBuilder::from_file(&path)
-            .map(|ch| match ch {
-                b'.' => Tile::Empty,
-                b'#' => Tile::Elf,
-                _ => unreachable!(),
-            })
-            .extend(100, 100, b'.')
-            .build(),
-    );
-
+    let mut grove = Grove::from_file(path);
     grove.move_elves(10);
     let bounded = grove.get_bounded();
     println!("{bounded}");
@@ -33,8 +25,13 @@ fn part1(path: impl AsRef<Path>) -> usize {
         .count()
 }
 
+// Determines the first move where no elf moves.
 fn part2(path: impl AsRef<Path>) -> usize {
-    get_input(path).map(|_| 0).sum()
+    let mut grove = Grove::from_file(path);
+    let rounds = grove.move_elves(usize::MAX);
+    let bounded = grove.get_bounded();
+    println!("{bounded}");
+    rounds + 1
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -57,7 +54,20 @@ impl Display for Tile {
 struct Grove(Grid<Tile>);
 
 impl Grove {
-    fn move_elves(&mut self, steps: usize) {
+    fn from_file(path: impl AsRef<Path>) -> Self {
+        Self(
+            GridBuilder::from_file(&path)
+                .map(|ch| match ch {
+                    b'.' => Tile::Empty,
+                    b'#' => Tile::Elf,
+                    _ => unreachable!(),
+                })
+                .extend(100, 100, b'.')
+                .build(),
+        )
+    }
+
+    fn move_elves(&mut self, steps: usize) -> usize {
         for step in 0..steps {
             let mut proposed_moves: HashMap<Point, (Point, bool)> = HashMap::new();
             for (elf, _) in self.0.cells().filter(|(_, tile)| **tile == Tile::Elf) {
@@ -71,6 +81,10 @@ impl Grove {
                 }
             }
 
+            if proposed_moves.is_empty() {
+                return step;
+            }
+
             for (new_pos, (old_pos, rejected)) in proposed_moves {
                 if !rejected {
                     self.0[old_pos] = Tile::Empty;
@@ -78,6 +92,8 @@ impl Grove {
                 }
             }
         }
+
+        steps
     }
 
     fn get_bounded(&self) -> SubGrid<Tile> {
@@ -160,6 +176,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(aoc_sample_input()));
+        assert_eq!(20, part2(aoc_sample_input()));
     }
 }
