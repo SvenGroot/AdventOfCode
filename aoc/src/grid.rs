@@ -1,3 +1,6 @@
+mod builder;
+mod subgrid;
+
 use std::{
     convert::TryFrom,
     fmt::Display,
@@ -9,9 +12,10 @@ use std::{
 use thiserror::Error;
 
 use crate::get_input;
+pub use builder::GridBuilder;
+pub use subgrid::SubGrid;
 
-#[derive(Clone)]
-pub struct Grid<T: Clone>(Vec<Vec<T>>);
+pub struct Grid<T>(Vec<Vec<T>>);
 
 pub fn grid_from_file(path: impl AsRef<Path>) -> Grid<u8> {
     // TODO: Check grid is rectangular
@@ -43,7 +47,9 @@ impl<T: Clone> Grid<T> {
     pub fn new(height: NonZeroUsize, width: NonZeroUsize, value: T) -> Self {
         Self(vec![vec![value; width.into()]; height.into()])
     }
+}
 
+impl<T> Grid<T> {
     pub fn width(&self) -> usize {
         self.0[0].len()
     }
@@ -60,7 +66,7 @@ impl<T: Clone> Grid<T> {
         self.0.get_mut(index.row)?.get_mut(index.col)
     }
 
-    pub fn map<U: Clone>(&self, mut f: impl FnMut(&T) -> U) -> Grid<U> {
+    pub fn map<U>(&self, mut f: impl FnMut(&T) -> U) -> Grid<U> {
         let grid = self
             .0
             .iter()
@@ -105,10 +111,24 @@ impl<T: Clone> Grid<T> {
         })
     }
 
-    pub fn straight_neighbors(&self, point: Point) -> impl Iterator<Item = Point> + '_ {
+    pub fn straight_neighbors(&self, point: Point) -> impl Iterator<Item = Point> {
+        self.neighbors(point, &PointDiff::STRAIGHT_NEIGHBORS)
+    }
+
+    pub fn all_neighbors(&self, point: Point) -> impl Iterator<Item = Point> {
+        self.neighbors(point, &PointDiff::ALL_NEIGHBORS)
+    }
+
+    pub fn neighbors<'a>(
+        &self,
+        point: Point,
+        neighbors: &'a [PointDiff],
+    ) -> impl Iterator<Item = Point> + 'a {
+        let height = self.height();
+        let width = self.width();
         point
-            .straight_neighbors()
-            .filter(|nb| nb.row < self.height() && nb.col < self.width())
+            .neighbors(neighbors)
+            .filter(move |nb| nb.row < height && nb.col < width)
     }
 
     // Adds a diff to a point, only if the result is on the grid.
@@ -166,7 +186,13 @@ impl<T: Clone> Grid<T> {
     }
 }
 
-impl<T: Clone> Index<Point> for Grid<T> {
+impl<T: Clone> Clone for Grid<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<T> Index<Point> for Grid<T> {
     type Output = T;
 
     fn index(&self, index: Point) -> &Self::Output {
@@ -174,13 +200,13 @@ impl<T: Clone> Index<Point> for Grid<T> {
     }
 }
 
-impl<T: Clone> IndexMut<Point> for Grid<T> {
+impl<T> IndexMut<Point> for Grid<T> {
     fn index_mut(&mut self, index: Point) -> &mut Self::Output {
         &mut self.0[index.row][index.col]
     }
 }
 
-impl<T: Clone + Display> Display for Grid<T> {
+impl<T: Display> Display for Grid<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for row in &self.0 {
             for cell in row {
@@ -237,10 +263,26 @@ impl Point {
         diff.row.abs() <= 1 && diff.col.abs() <= 1
     }
 
-    pub fn straight_neighbors(&self) -> Neighbors {
+    pub fn straight_neighbors(&self) -> Neighbors<'static> {
         Neighbors {
             point: *self,
             neighbors: &PointDiff::STRAIGHT_NEIGHBORS,
+            index: 0,
+        }
+    }
+
+    pub fn all_neighbors(&self) -> Neighbors<'static> {
+        Neighbors {
+            point: *self,
+            neighbors: &PointDiff::ALL_NEIGHBORS,
+            index: 0,
+        }
+    }
+
+    pub fn neighbors<'a>(&self, neighbors: &'a [PointDiff]) -> Neighbors<'a> {
+        Neighbors {
+            point: *self,
+            neighbors,
             index: 0,
         }
     }
@@ -387,6 +429,16 @@ impl PointDiff {
     pub const DOWN_RIGHT: PointDiff = PointDiff::new(1, 1);
 
     pub const STRAIGHT_NEIGHBORS: [PointDiff; 4] = [Self::UP, Self::RIGHT, Self::DOWN, Self::LEFT];
+    pub const ALL_NEIGHBORS: [PointDiff; 8] = [
+        Self::UP,
+        Self::RIGHT,
+        Self::DOWN,
+        Self::LEFT,
+        Self::UP_LEFT,
+        Self::UP_RIGHT,
+        Self::DOWN_LEFT,
+        Self::DOWN_RIGHT,
+    ];
 
     pub const fn new(row: isize, col: isize) -> Self {
         Self { row, col }
@@ -548,15 +600,21 @@ impl Rectangle {
             && point.row <= self.bottom_right.row
             && point.col <= self.bottom_right.col
     }
+
+    pub fn points(&self) -> impl Iterator<Item = Point> + '_ {
+        (self.top_left.row..=self.bottom_right.row).flat_map(|row| {
+            (self.top_left.col..=self.bottom_right.col).map(move |col| Point::new(row, col))
+        })
+    }
 }
 
-pub struct Neighbors {
+pub struct Neighbors<'a> {
     point: Point,
-    neighbors: &'static [PointDiff],
+    neighbors: &'a [PointDiff],
     index: usize,
 }
 
-impl Iterator for Neighbors {
+impl<'a> Iterator for Neighbors<'a> {
     type Item = Point;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -571,13 +629,13 @@ impl Iterator for Neighbors {
     }
 }
 
-pub struct Scan<'a, T: Clone> {
+pub struct Scan<'a, T> {
     grid: &'a Grid<T>,
     current: Option<Point>,
     direction: PointDiff,
 }
 
-impl<'a, T: Clone> Iterator for Scan<'a, T> {
+impl<'a, T> Iterator for Scan<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -592,13 +650,13 @@ impl<'a, T: Clone> Iterator for Scan<'a, T> {
     }
 }
 
-pub struct ScanMut<'a, T: Clone> {
+pub struct ScanMut<'a, T> {
     grid: &'a mut Grid<T>,
     current: Option<Point>,
     direction: PointDiff,
 }
 
-impl<'a, T: Clone> Iterator for ScanMut<'a, T> {
+impl<'a, T> Iterator for ScanMut<'a, T> {
     type Item = &'a mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
