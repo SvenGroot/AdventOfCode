@@ -1,29 +1,51 @@
 use std::path::Path;
 
-use crate::get_input;
+use crate::{get_input, FileInput};
 
 use super::Grid;
 
-pub struct GridBuilder<'path, T> {
-    path: &'path Path,
+pub struct GridBuilder<T, I, S>
+where
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    input: I,
     transform: Box<dyn Fn(u8) -> T>,
     extend: Option<(usize, usize, u8)>,
 }
 
-impl<'path> GridBuilder<'path, u8> {
-    pub fn from_file(path: &'path impl AsRef<Path>) -> Self {
+impl GridBuilder<u8, FileInput, String> {
+    pub fn from_file(path: impl AsRef<Path>) -> Self {
         Self {
-            path: path.as_ref(),
+            input: get_input(path),
             transform: Box::new(|byte| byte),
             extend: None,
         }
     }
 }
 
-impl<'path, T> GridBuilder<'path, T> {
-    pub fn map<U>(self, transform: impl Fn(u8) -> U + Clone + 'static) -> GridBuilder<'path, U> {
+impl<I, S> GridBuilder<u8, I, S>
+where
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    pub fn from_lines(input: I) -> Self {
+        Self {
+            input,
+            transform: Box::new(|byte| byte),
+            extend: None,
+        }
+    }
+}
+
+impl<T, I, S> GridBuilder<T, I, S>
+where
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    pub fn map<U>(self, transform: impl Fn(u8) -> U + Clone + 'static) -> GridBuilder<U, I, S> {
         GridBuilder {
-            path: self.path,
+            input: self.input,
             transform: Box::new(transform),
             extend: self.extend,
         }
@@ -42,12 +64,12 @@ impl<'path, T> GridBuilder<'path, T> {
         let (extend_width, extend_height, extend_value) = self.extend.unwrap_or((0, 0, 0));
         let mut grid: Vec<_> = (0..extend_height).map(|_| Vec::new()).collect();
 
-        grid.extend(get_input(self.path).map(|line| {
+        grid.extend(self.input.map(|line| {
             let mut row: Vec<_> = (0..extend_width)
                 .map(|_| (self.transform)(extend_value))
                 .collect();
 
-            row.extend(line.bytes().map(self.transform.as_ref()));
+            row.extend(line.as_ref().bytes().map(self.transform.as_ref()));
             row.extend((0..extend_width).map(|_| (self.transform)(extend_value)));
             row
         }));

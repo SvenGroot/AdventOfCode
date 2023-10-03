@@ -11,36 +11,13 @@ use std::{
 };
 use thiserror::Error;
 
-use crate::get_input;
 pub use builder::GridBuilder;
 pub use subgrid::SubGrid;
 
 pub struct Grid<T>(Vec<Vec<T>>);
 
 pub fn grid_from_file(path: impl AsRef<Path>) -> Grid<u8> {
-    // TODO: Check grid is rectangular
-    let grid = get_input(path)
-        .map(|line| line.as_bytes().to_vec())
-        .collect();
-
-    Grid(grid)
-}
-
-pub fn grid_from_non_uniform_lines<I, S>(input: I, extend: u8) -> Grid<u8>
-where
-    I: Iterator<Item = S>,
-    S: AsRef<str>,
-{
-    let mut grid: Vec<_> = input
-        .map(|line| line.as_ref().as_bytes().to_vec())
-        .collect();
-
-    let longest = grid.iter().map(|row| row.len()).max().unwrap();
-    for row in grid.iter_mut() {
-        row.resize(longest, extend);
-    }
-
-    Grid(grid)
+    GridBuilder::from_file(path).build()
 }
 
 impl<T: Clone> Grid<T> {
@@ -738,7 +715,10 @@ mod tests {
     #[test]
     fn test_non_uniform() {
         let input = vec!["123".to_owned(), "12345".to_owned(), "12".to_owned()];
-        let grid = grid_from_non_uniform_lines(input.into_iter(), b' ');
+        let grid = GridBuilder::from_lines(input.into_iter())
+            .extend(0, 0, b' ')
+            .build();
+
         assert_eq!(5, grid.width());
         assert_eq!(3, grid.height());
         assert_eq!(&[b'1', b'2', b'3', b' ', b' '], grid.0[0].as_slice());

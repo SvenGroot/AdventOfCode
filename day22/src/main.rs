@@ -3,7 +3,7 @@ use std::{fmt::Display, num::NonZeroUsize, path::Path, str::FromStr};
 
 use aoc::{
     aoc_input, get_input, get_input_vec,
-    grid::{grid_from_non_uniform_lines, Grid, Point, PointDiff, Rectangle, Rotation},
+    grid::{Grid, GridBuilder, Point, PointDiff, Rectangle, Rotation},
     iterator::PeekableExt,
 };
 
@@ -46,12 +46,15 @@ fn part2(path: impl AsRef<Path>) -> usize {
 fn load_input(path: impl AsRef<Path>) -> (Board, Vec<Move>) {
     let mut input = get_input(path);
     let grid = input.by_ref().take_while(|line| !line.is_empty());
-    let mut grid = grid_from_non_uniform_lines(grid, b' ').map(|ch| match ch {
-        b' ' => Tile::Blank,
-        b'.' => Tile::Open(None),
-        b'#' => Tile::Wall,
-        _ => unreachable!(),
-    });
+    let mut grid = GridBuilder::from_lines(grid)
+        .map(|ch| match ch {
+            b' ' => Tile::Blank,
+            b'.' => Tile::Open(None),
+            b'#' => Tile::Wall,
+            _ => unreachable!(),
+        })
+        .extend(0, 0, b' ')
+        .build();
 
     let moves = input.next().unwrap();
     let mut peekable_chars = moves.chars().peekable();

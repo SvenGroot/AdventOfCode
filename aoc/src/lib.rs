@@ -9,7 +9,8 @@ use std::{
     env::current_exe,
     ffi::OsStr,
     fs::File,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Lines},
+    iter::Map,
     path::{Component, Path, PathBuf},
 };
 
@@ -45,7 +46,9 @@ fn aoc_input_core(sample: bool) -> PathBuf {
     input
 }
 
-pub fn get_input(path: impl AsRef<Path>) -> impl Iterator<Item = String> {
+pub type FileInput = Map<Lines<BufReader<File>>, fn(std::io::Result<String>) -> String>;
+
+pub fn get_input(path: impl AsRef<Path>) -> FileInput {
     BufReader::new(File::open(path).unwrap())
         .lines()
         .map(Result::unwrap)
