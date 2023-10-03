@@ -1,0 +1,9 @@
+4
+2,0;0,1;1,1;2,1;2,2;3,2
+1R,6R,true
+1T,2T,true
+1L,3T,false
+2L,6B,true
+2B,5B,true
+3B,5L,true
+4R,6T,true
