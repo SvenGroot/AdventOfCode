@@ -232,6 +232,11 @@ impl Point {
         self.try_into().ok()
     }
 
+    pub fn is_adjacent(&self, other: Point) -> bool {
+        let diff = self.diff(other).unwrap();
+        diff.row.abs() <= 1 && diff.col.abs() <= 1
+    }
+
     pub fn straight_neighbors(&self) -> Neighbors {
         Neighbors {
             point: *self,
@@ -385,6 +390,20 @@ impl PointDiff {
 
     pub const fn new(row: isize, col: isize) -> Self {
         Self { row, col }
+    }
+
+    pub fn from_char(input: u8, up: u8, right: u8, down: u8, left: u8) -> Option<Self> {
+        if input == up {
+            Some(PointDiff::UP)
+        } else if input == right {
+            Some(PointDiff::RIGHT)
+        } else if input == down {
+            Some(PointDiff::DOWN)
+        } else if input == left {
+            Some(PointDiff::LEFT)
+        } else {
+            None
+        }
     }
 
     pub fn row(&self) -> isize {

@@ -1,34 +1,35 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
-use aoc::get_input;
-use std::{collections::HashSet, str::FromStr};
+use aoc::{
+    aoc_input, get_input,
+    grid::{Point, PointDiff},
+};
+use std::{collections::HashSet, path::Path, str::FromStr};
 
 fn main() {
-    const PATH: &str = "input/day9.txt";
-    println!("Part 1: {}", part1(PATH));
-    println!("Part 2: {}", part2(PATH));
+    println!("Part 1: {}", part1(aoc_input()));
+    println!("Part 2: {}", part2(aoc_input()));
 }
 
-fn part1(path: &str) -> usize {
+fn part1(path: impl AsRef<Path>) -> usize {
     simulate(path, 2)
 }
 
-fn part2(path: &str) -> usize {
+fn part2(path: impl AsRef<Path>) -> usize {
     simulate(path, 10)
 }
 
-fn simulate(path: &str, knots: usize) -> usize {
+fn simulate(path: impl AsRef<Path>, knots: usize) -> usize {
     let mut visited = HashSet::new();
-    let mut knots = vec![Position::new(); knots];
+    let mut knots = vec![Point::new(1000, 1000); knots];
     visited.insert(*knots.last().unwrap());
     for line in get_input(path) {
         let amount = i32::from_str(&line[2..]).unwrap();
-        for i in 0..amount {
-            knots[0] = knots[0].mv(line.as_bytes()[0]);
+        for _ in 0..amount {
+            let dir = get_direction(line.as_bytes()[0]);
+            knots[0] += dir;
             for i in 1..knots.len() {
-                if !knots[i].is_adjacent(&knots[i - 1]) {
-                    knots[i] = knots[i].move_toward(&knots[i - 1]);
+                if !knots[i].is_adjacent(knots[i - 1]) {
+                    let dir = knots[i - 1].diff(knots[i]).unwrap().signum();
+                    knots[i] += dir;
                     visited.insert(*knots.last().unwrap());
                 }
             }
@@ -38,118 +39,23 @@ fn simulate(path: &str, knots: usize) -> usize {
     visited.len()
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-struct Position {
-    x: i32,
-    y: i32,
-}
-
-impl std::ops::Add for Position {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            x: self.x + rhs.x,
-            y: self.y + rhs.y,
-        }
-    }
-}
-
-impl std::ops::Sub for Position {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self {
-            x: self.x - rhs.x,
-            y: self.y - rhs.y,
-        }
-    }
-}
-
-fn draw_grid(min: i32, max: i32, knots: &[Position]) {
-    for y in (min..max).rev() {
-        for x in min..max {
-            let mut ch = if (x, y) == (0, 0) { 's' } else { '.' };
-            for (index, knot) in knots.iter().enumerate().rev() {
-                if knot.x == x && knot.y == y {
-                    ch = if index == 0 {
-                        'H'
-                    } else if index == knots.len() - 1 {
-                        'T'
-                    } else {
-                        (index - '0' as usize) as u8 as char
-                    };
-                }
-            }
-
-            print!("{}", ch)
-        }
-
-        println!();
-    }
-
-    println!();
-}
-
-impl Position {
-    fn new() -> Self {
-        Self { x: 0, y: 0 }
-    }
-
-    fn is_adjacent(&self, other: &Position) -> bool {
-        (other.x - self.x).abs() <= 1 && (other.y - self.y).abs() <= 1
-    }
-
-    fn signum(&self) -> Self {
-        Self {
-            x: self.x.signum(),
-            y: self.y.signum(),
-        }
-    }
-
-    fn move_toward(&self, other: &Position) -> Self {
-        let amount = (*other - *self).signum();
-        *self + amount
-    }
-
-    fn mv(&self, dir: u8) -> Self {
-        match dir {
-            b'R' => Self {
-                x: self.x + 1,
-                y: self.y,
-            },
-            b'L' => Self {
-                x: self.x - 1,
-                y: self.y,
-            },
-            b'U' => Self {
-                x: self.x,
-                y: self.y + 1,
-            },
-            b'D' => Self {
-                x: self.x,
-                y: self.y - 1,
-            },
-            _ => unreachable!(),
-        }
-    }
+fn get_direction(dir: u8) -> PointDiff {
+    PointDiff::from_char(dir, b'U', b'R', b'D', b'L').unwrap()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use aoc::aoc_sample_input;
 
-    const PATH: &str = "../input/sample/day9.txt";
+    use super::*;
 
     #[test]
     fn test_part1() {
-        assert_eq!(13, part1(PATH));
+        assert_eq!(13, part1(aoc_sample_input()));
     }
 
     #[test]
     fn test_part2() {
-        assert_eq!(36, part2("../input/sample/day9_2.txt"));
+        assert_eq!(36, part2(aoc_sample_input().with_file_name("day9_2.txt")));
     }
-
-    fn test_position() {}
 }
