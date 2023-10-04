@@ -71,6 +71,13 @@ impl<T> Grid<T> {
         })
     }
 
+    pub fn bounding_rect(&self) -> Rectangle {
+        Rectangle {
+            top_left: Point::default(),
+            bottom_right: Point::new(self.height() - 1, self.width() - 1),
+        }
+    }
+
     pub fn edge_cells(&self) -> impl Iterator<Item = (Point, &T)> {
         // This could obviously be done much more efficiently.
         let last_row = self.height() - 1;
