@@ -4,6 +4,7 @@ pub mod grid;
 pub mod grid3d;
 pub mod iterator;
 pub mod nested_list;
+pub mod tree;
 
 use std::{
     env::current_exe,

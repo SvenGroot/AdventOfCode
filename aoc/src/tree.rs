@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::fmt::Display;
 
 // There are existing tree crates; I wanted to try building one.

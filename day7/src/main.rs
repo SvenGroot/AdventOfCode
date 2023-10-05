@@ -1,16 +1,13 @@
-mod tree;
+use std::{fmt::Display, path::Path, str::FromStr};
 
-use aoc::get_input;
-use std::{fmt::Display, str::FromStr};
-use tree::TreeNode;
+use aoc::{aoc_input, get_input, tree::TreeNode};
 
 fn main() {
-    const PATH: &str = "input/day7.txt";
-    println!("Part 1: {}", part1(PATH));
-    println!("Part 2: {}", part2(PATH));
+    println!("Part 1: {}", part1(aoc_input()));
+    println!("Part 2: {}", part2(aoc_input()));
 }
 
-fn part1(path: &str) -> usize {
+fn part1(path: impl AsRef<Path>) -> usize {
     let mut tree = parse_input(path);
     println!("{}", tree);
     calc_dir_sizes(&mut tree);
@@ -24,7 +21,7 @@ fn part1(path: &str) -> usize {
     sum
 }
 
-fn part2(path: &str) -> usize {
+fn part2(path: impl AsRef<Path>) -> usize {
     let mut tree = parse_input(path);
     calc_dir_sizes(&mut tree);
     const TOTAL_SIZE: usize = 70000000;
@@ -78,7 +75,7 @@ impl Display for FileSystemItem {
     }
 }
 
-fn parse_input(path: &str) -> TreeNode<FileSystemItem> {
+fn parse_input(path: impl AsRef<Path>) -> TreeNode<FileSystemItem> {
     let mut root = TreeNode::new(FileSystemItem::dir("/".into()));
     let mut iter = get_input(path);
     parse_node(&mut root, &mut iter);
@@ -124,17 +121,17 @@ fn calc_dir_sizes(node: &mut TreeNode<FileSystemItem>) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use aoc::aoc_sample_input;
 
-    const PATH: &str = "../input/sample/day7.txt";
+    use super::*;
 
     #[test]
     fn test_part1() {
-        assert_eq!(95437, part1(PATH));
+        assert_eq!(95437, part1(aoc_sample_input()));
     }
 
     #[test]
     fn test_part2() {
-        assert_eq!(24933642, part2(PATH));
+        assert_eq!(24933642, part2(aoc_sample_input()));
     }
 }
