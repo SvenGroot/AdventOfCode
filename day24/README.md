@@ -14,10 +14,10 @@ First, I realized that the blizzard positions would repeat, which meant you coul
 search was endless. Trying to "guess" a reasonable longest path and capping the search like that
 worked for the sample, but not for the real input; it was still to slow.
 
-I then realized that because the valley states repeated, and there weren't that many (on 599 in the
-real input) I could pre-compute all of them, saving work during the search. That also meant I could
-represent a state as `(valley_index, position)`, which made memoization easy. Yet, this was still
-too slow, so I used to memoization to detect cycles too.
+I then realized that because the valley states repeated, and there weren't that many (only 599 in
+the real input) I could pre-compute all of them, saving work during the search. That also meant I
+could represent a state as `(valley_index, position)`, which made memoization easy. Yet, this was
+still too slow, so I used to memoization to detect cycles too.
 
 This worked, both for the sample and part 1.
 
@@ -64,7 +64,7 @@ all the time.
 That was good news, because my Dijkstra implementation was pretty dumb, and just used a linear
 search to find the lowest value every round. Optimizing that with a priority queue would be
 straightforward. Fortunately, I not only found a good priority queue crate for Rust, it even had
-a fast "change priority" operation, which was exactly what I would here!
+a fast "change priority" operation, which was exactly what I would need here!
 
 This was still slightly slower for part 1 than the original search, but had the advantage of being
 actually correct, rather than working by accident. And, it got the correct answer for part 2, in
