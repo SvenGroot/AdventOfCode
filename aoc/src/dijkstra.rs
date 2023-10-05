@@ -1,6 +1,9 @@
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::hash::Hash;
+
+use priority_queue::PriorityQueue;
 
 pub trait Graph<Vertex>
 where
@@ -59,32 +62,45 @@ fn shortest_paths_core<Vertex>(
 where
     Vertex: Copy + Eq + Hash,
 {
-    let mut vertices = graph.vertices();
+    let vertices_source = graph.vertices();
+    // println!("{}", vertices_source.len());
+    let mut vertices = PriorityQueue::new();
     let mut info = HashMap::new();
-    for v in &vertices {
-        info.insert(*v, VertexInfo::<Vertex>::default());
+    for v in vertices_source.into_iter() {
+        let distance = if v == *source { 0 } else { usize::MAX };
+
+        vertices.push(v, Reverse(distance));
+        info.insert(
+            v,
+            VertexInfo::<Vertex> {
+                distance,
+                previous: None,
+            },
+        );
     }
 
     info.get_mut(source).unwrap().distance = 0;
-    while !vertices.is_empty() {
-        let closest = *vertices.iter().min_by_key(|v| info[v].distance).unwrap();
+    while let Some((closest, distance)) = vertices.pop() {
         if Some(closest) == dest {
             break;
         }
 
-        vertices.remove(&closest);
-        let distance = info[&closest].distance;
-        if distance == usize::MAX {
+        // if vertices.len() % 1000 == 0 {
+        //     println!("{} remaining", vertices.len());
+        // }
+
+        if distance.0 == usize::MAX {
             break;
         }
 
         for (neighbor, weight) in graph.neighbors(&closest) {
-            if vertices.contains(&neighbor) {
-                let alt = distance + weight; // No weight support
+            if vertices.get(&neighbor).is_some() {
+                let alt = distance.0 + weight;
                 let neighbor_info = info.get_mut(&neighbor).unwrap();
                 if alt < neighbor_info.distance {
                     neighbor_info.distance = alt;
                     neighbor_info.previous = Some(closest);
+                    vertices.change_priority(&neighbor, Reverse(alt));
                 }
             }
         }

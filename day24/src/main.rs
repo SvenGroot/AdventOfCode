@@ -1,9 +1,11 @@
 // https://adventofcode.com/2022/day/24
 use bitvec::prelude::*;
-use std::{fmt::Display, path::Path};
+use std::{collections::HashSet, fmt::Display, path::Path};
 
 use aoc::{
-    aoc_input, get_input,
+    aoc_input,
+    dijkstra::{shortest_paths, Graph},
+    get_input,
     grid::{Grid, GridBuilder, Point, PointDiff},
 };
 
@@ -14,7 +16,7 @@ fn main() {
 }
 
 fn part1(path: impl AsRef<Path>) -> usize {
-    let valley = Valley::from_file(path);
+    let mut valley = Valley::from_file(path);
     let mut empty_valley = valley.clone();
     for (_, tile) in empty_valley.0.cells_mut() {
         if let Tile::Floor(blizzards) = tile {
@@ -22,8 +24,28 @@ fn part1(path: impl AsRef<Path>) -> usize {
         }
     }
 
-    let mut best = 30;
-    Simulation::new(valley).run(&empty_valley, &mut best)
+    let mut valleys = vec![(valley.clone(), valley.get_empty_tiles())];
+    loop {
+        valley = valley.move_blizzards(&empty_valley);
+        if valley == valleys[0].0 {
+            break;
+        }
+
+        valleys.push((valley.clone(), valley.get_empty_tiles()));
+    }
+
+    println!("Finding shortest paths.");
+    let graph = ValleyGraph(valleys);
+    let source = ValleyVertex(0, Point::new(0, 1));
+    let paths = shortest_paths(&graph, &source);
+
+    println!("Checking optimal exit.");
+    let exit = Point::new(valley.0.height() - 1, valley.0.width() - 2);
+    paths
+        .iter()
+        .filter_map(|(vertex, info)| (vertex.1 == exit).then_some(info.distance))
+        .min()
+        .unwrap()
 }
 
 fn part2(path: impl AsRef<Path>) -> usize {
@@ -82,7 +104,7 @@ impl Display for Tile {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 struct Valley(Grid<Tile>);
 
 impl Valley {
@@ -139,6 +161,42 @@ impl Valley {
             PointDiff::RIGHT => Point::new(pos.row(), 1),
             _ => unreachable!(),
         }
+    }
+
+    fn get_empty_tiles(&self) -> HashSet<Point> {
+        self.0
+            .cells()
+            .filter_map(|(pos, tile)| tile.is_clear().then_some(pos))
+            .collect()
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+struct ValleyVertex(usize, Point);
+
+struct ValleyGraph(Vec<(Valley, HashSet<Point>)>);
+
+impl Graph<ValleyVertex> for ValleyGraph {
+    fn vertices(&self) -> HashSet<ValleyVertex> {
+        self.0
+            .iter()
+            .enumerate()
+            .flat_map(|(index, valley)| valley.1.iter().map(move |pos| ValleyVertex(index, *pos)))
+            .collect()
+    }
+
+    fn neighbors(&self, v: &ValleyVertex) -> Vec<(ValleyVertex, usize)> {
+        // Neighbors are points in the next valley state that are adjacent or equal to the current point.
+        let index = (v.0 + 1) % self.0.len();
+        let empty_tiles = &self.0[index].1;
+        v.1.straight_neighbors()
+            .chain([v.1])
+            .filter_map(|nb| {
+                empty_tiles
+                    .contains(&nb)
+                    .then_some((ValleyVertex(index, nb), 1))
+            })
+            .collect()
     }
 }
 

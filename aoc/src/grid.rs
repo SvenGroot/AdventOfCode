@@ -14,6 +14,7 @@ use thiserror::Error;
 pub use builder::GridBuilder;
 pub use subgrid::SubGrid;
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Grid<T>(Vec<Vec<T>>);
 
 pub fn grid_from_file(path: impl AsRef<Path>) -> Grid<u8> {
@@ -167,12 +168,6 @@ impl<T> Grid<T> {
             current: Some(start),
             direction,
         }
-    }
-}
-
-impl<T: Clone> Clone for Grid<T> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
     }
 }
 
