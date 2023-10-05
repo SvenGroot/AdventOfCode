@@ -19,12 +19,12 @@ impl<'a, T: Display> Display for SubGrid<'a, T> {
         let mut last_row = None;
         for pos in self.1.points() {
             if let Some(last_row_val) = last_row {
-                if last_row_val != pos.row {
+                if last_row_val != pos.row() {
                     writeln!(f)?;
-                    last_row = Some(pos.row);
+                    last_row = Some(pos.row());
                 }
             } else {
-                last_row = Some(pos.row)
+                last_row = Some(pos.row())
             }
 
             write!(f, "{}", self.0[pos])?;
