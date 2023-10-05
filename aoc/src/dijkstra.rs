@@ -79,7 +79,7 @@ where
         );
     }
 
-    info.get_mut(source).unwrap().distance = 0;
+    assert!(info.contains_key(source));
     while let Some((closest, distance)) = vertices.pop() {
         if Some(closest) == dest {
             break;

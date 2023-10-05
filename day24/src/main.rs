@@ -5,51 +5,40 @@ use std::{collections::HashSet, fmt::Display, path::Path};
 use aoc::{
     aoc_input,
     dijkstra::{shortest_paths, Graph},
-    get_input,
     grid::{Grid, GridBuilder, Point, PointDiff},
 };
 
 fn main() {
     let path = aoc_input();
-    println!("Part 1: {}", part1(&path));
-    println!("Part 2: {}", part2(&path));
+    let part1 = part1(&path);
+    println!("Part 1: {}", part1);
+    println!("Part 2: {}", part2(&path, part1));
 }
 
+// Find the quickest path through the valley with moving blizzards.
 fn part1(path: impl AsRef<Path>) -> usize {
-    let mut valley = Valley::from_file(path);
-    let mut empty_valley = valley.clone();
-    for (_, tile) in empty_valley.0.cells_mut() {
-        if let Tile::Floor(blizzards) = tile {
-            *blizzards = Default::default();
-        }
-    }
-
-    let mut valleys = vec![(valley.clone(), valley.get_empty_tiles())];
-    loop {
-        valley = valley.move_blizzards(&empty_valley);
-        if valley == valleys[0].0 {
-            break;
-        }
-
-        valleys.push((valley.clone(), valley.get_empty_tiles()));
-    }
-
-    println!("Finding shortest paths.");
-    let graph = ValleyGraph(valleys);
+    let valley = Valley::from_file(path);
+    let graph = ValleyGraph::new(valley.clone());
     let source = ValleyVertex(0, Point::new(0, 1));
-    let paths = shortest_paths(&graph, &source);
-
-    println!("Checking optimal exit.");
-    let exit = Point::new(valley.0.height() - 1, valley.0.width() - 2);
-    paths
-        .iter()
-        .filter_map(|(vertex, info)| (vertex.1 == exit).then_some(info.distance))
-        .min()
-        .unwrap()
+    let dest = Point::new(valley.0.height() - 1, valley.0.width() - 2);
+    graph.find_path(source, dest)
 }
 
-fn part2(path: impl AsRef<Path>) -> usize {
-    get_input(path).map(|_| 0).sum()
+// Then head back to the start, and back to the end again.
+fn part2(path: impl AsRef<Path>, there: usize) -> usize {
+    let valley = Valley::from_file(path);
+    let graph = ValleyGraph::new(valley.clone());
+    let exit = Point::new(valley.0.height() - 1, valley.0.width() - 2);
+    let source = ValleyVertex(there % graph.0.len(), exit);
+    let dest = Point::new(0, 1);
+    let back = graph.find_path(source, dest);
+    println!("Back: {back}");
+    let source = ValleyVertex((there + back) % graph.0.len(), Point::new(0, 1));
+    let dest = exit;
+    let again = graph.find_path(source, dest);
+    println!("Again: {again}");
+
+    there + back + again
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -60,13 +49,6 @@ enum Tile {
 }
 
 impl Tile {
-    // fn get_blizzards(&self) -> &BitArray<[u8; 1]> {
-    //     match self {
-    //         Tile::Floor(blizzards) => blizzards,
-    //         _ => panic!("Not a floor."),
-    //     }
-    // }
-
     fn get_blizzards_mut(&mut self) -> &mut BitArray<[u8; 1]> {
         match self {
             Tile::Floor(blizzards) => blizzards,
@@ -174,21 +156,57 @@ impl Valley {
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 struct ValleyVertex(usize, Point);
 
-struct ValleyGraph(Vec<(Valley, HashSet<Point>)>);
+struct ValleyGraph(Vec<HashSet<Point>>);
+
+impl ValleyGraph {
+    fn new(mut valley: Valley) -> Self {
+        let mut empty_valley = valley.clone();
+        for (_, tile) in empty_valley.0.cells_mut() {
+            if let Tile::Floor(blizzards) = tile {
+                *blizzards = Default::default();
+            }
+        }
+
+        // Precompute all the valley blizzard positions (there aren't that many), and every blank
+        // tile (non-wall with no blizzards) for that state. These are the vertices for the graph.
+        let first_valley = valley.clone();
+        let mut valleys = vec![valley.get_empty_tiles()];
+        loop {
+            valley = valley.move_blizzards(&empty_valley);
+            if valley == first_valley {
+                break;
+            }
+
+            valleys.push(valley.get_empty_tiles());
+        }
+
+        Self(valleys)
+    }
+
+    fn find_path(&self, source: ValleyVertex, dest: Point) -> usize {
+        let paths = shortest_paths(self, &source);
+        // Find the valley state where the exit tile has the shortest distance.
+        paths
+            .iter()
+            .filter_map(|(vertex, info)| (vertex.1 == dest).then_some(info.distance))
+            .min()
+            .unwrap()
+    }
+}
 
 impl Graph<ValleyVertex> for ValleyGraph {
     fn vertices(&self) -> HashSet<ValleyVertex> {
         self.0
             .iter()
             .enumerate()
-            .flat_map(|(index, valley)| valley.1.iter().map(move |pos| ValleyVertex(index, *pos)))
+            .flat_map(|(index, valley)| valley.iter().map(move |pos| ValleyVertex(index, *pos)))
             .collect()
     }
 
     fn neighbors(&self, v: &ValleyVertex) -> Vec<(ValleyVertex, usize)> {
         // Neighbors are points in the next valley state that are adjacent or equal to the current point.
         let index = (v.0 + 1) % self.0.len();
-        let empty_tiles = &self.0[index].1;
+        let empty_tiles = &self.0[index];
         v.1.straight_neighbors()
             .chain([v.1])
             .filter_map(|nb| {
@@ -197,74 +215,6 @@ impl Graph<ValleyVertex> for ValleyGraph {
                     .then_some((ValleyVertex(index, nb), 1))
             })
             .collect()
-    }
-}
-
-struct Simulation {
-    valley: Valley,
-    player: Point,
-    wait_count: usize,
-    minute: usize,
-}
-
-impl Simulation {
-    fn new(valley: Valley) -> Self {
-        Self {
-            valley,
-            player: Point::new(0, 1),
-            wait_count: 0,
-            minute: 0,
-        }
-    }
-
-    fn run(self, empty_valley: &Valley, best: &mut usize) -> usize {
-        if self.minute >= *best {
-            return usize::MAX;
-        }
-
-        let new_valley = self.valley.move_blizzards(empty_valley);
-
-        // Check if we can move to the tile adjacent to the exit tile.
-        if (self.player == Point::new(self.valley.0.height() - 3, self.valley.0.width() - 2)
-            || self.player == Point::new(self.valley.0.height() - 2, self.valley.0.width() - 3))
-            && new_valley.0[Point::new(self.valley.0.height() - 2, self.valley.0.width() - 2)]
-                .is_clear()
-        {
-            *best = self.minute;
-            println!("New best {best}");
-            return self.minute + 2;
-        }
-
-        // Check the possible moves.
-        // N.B. Can't walk off the grid thanks to walls, so skip that check.
-        let mut min_minutes = usize::MAX;
-        for nb in self.player.straight_neighbors() {
-            if nb != Point::new(0, 1) && new_valley.0[nb].is_clear() {
-                let next = Simulation {
-                    valley: new_valley.clone(),
-                    player: nb,
-                    wait_count: 0,
-                    minute: self.minute + 1,
-                };
-
-                min_minutes = next.run(empty_valley, best).min(min_minutes);
-            }
-        }
-
-        // Check if we can wait.
-        let max_wait = self.valley.0.width().max(self.valley.0.height()) - 2;
-        if new_valley.0[self.player].is_clear() && self.wait_count < max_wait {
-            let next = Simulation {
-                valley: new_valley,
-                player: self.player,
-                wait_count: self.wait_count + 1,
-                minute: self.minute + 1,
-            };
-
-            min_minutes = next.run(empty_valley, best).min(min_minutes);
-        }
-
-        min_minutes
     }
 }
 
@@ -281,6 +231,7 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(aoc_sample_input()));
+        let part1 = part1(aoc_sample_input());
+        assert_eq!(54, part2(aoc_sample_input(), part1));
     }
 }
