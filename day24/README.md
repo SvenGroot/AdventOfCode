@@ -1,4 +1,4 @@
-# Day 23
+# Day 24
 
 [Puzzle description.](https://adventofcode.com/2022/day/24)
 
