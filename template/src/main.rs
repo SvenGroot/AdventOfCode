@@ -1,4 +1,5 @@
-// https://adventofcode.com/2022/day/
+// https://adventofcode.com/2022/day/%DAY%
+
 use std::path::Path;
 
 use aoc::{aoc_input, get_input};

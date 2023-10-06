@@ -4,6 +4,7 @@ resolver = "2"
 
 [workspace.package]
 authors = ["Sven Groot"]
+version = "2022.0.0"
 
 [workspace.dependencies]
 anyhow = "1.0"
