@@ -2,6 +2,7 @@ pub mod circular_list;
 pub mod dijkstra;
 pub mod grid;
 pub mod grid3d;
+pub mod input;
 pub mod iterator;
 pub mod nested_list;
 pub mod tree;

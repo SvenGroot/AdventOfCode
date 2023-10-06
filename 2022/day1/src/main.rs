@@ -1,27 +1,29 @@
 // https://adventofcode.com/2022/day/1
-use std::{path::Path, str::FromStr};
 
-use aoc::{aoc_input, get_input_vec};
+use aoc::input::AocInput;
 
 fn main() {
-    let path = aoc_input();
-    println!("Part 1: {}", part1(&path));
-    println!("Part 2: {}", part2(&path));
+    println!("Part 1: {}", part1(AocInput::from_input()));
+    println!("Part 2: {}", part2(AocInput::from_input()));
 }
 
-fn part1(path: impl AsRef<Path>) -> u32 {
-    get_input_vec(path)
-        .split(|l| l.is_empty())
-        .map(|split| split.iter().map(|l| u32::from_str(l).unwrap()).sum())
+fn part1(input: AocInput) -> u32 {
+    input
+        .parsed_opt::<u32>()
+        .into_vec()
+        .split(Option::is_none)
+        .map(|split| split.iter().map(|value| value.unwrap()).sum())
         .max()
         .unwrap()
 }
 
-fn part2(path: impl AsRef<Path>) -> u32 {
-    let mut result = get_input_vec(path)
-        .split(|l| l.is_empty())
-        .map(|split| split.iter().map(|l| u32::from_str(l).unwrap()).sum())
-        .collect::<Vec<u32>>();
+fn part2(input: AocInput) -> u32 {
+    let mut result: Vec<u32> = input
+        .parsed_opt::<u32>()
+        .into_vec()
+        .split(Option::is_none)
+        .map(|split| split.iter().map(|value: &Option<u32>| value.unwrap()).sum())
+        .collect();
 
     result.sort_by(|a, b| b.cmp(a));
     result.iter().take(3).sum()
@@ -29,17 +31,15 @@ fn part2(path: impl AsRef<Path>) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use aoc::aoc_sample_input;
-
     use super::*;
 
     #[test]
     fn test_part1() {
-        assert_eq!(24000, part1(aoc_sample_input()));
+        assert_eq!(24000, part1(AocInput::from_sample()));
     }
 
     #[test]
     fn test_part2() {
-        assert_eq!(45000, part2(aoc_sample_input()));
+        assert_eq!(45000, part2(AocInput::from_sample()));
     }
 }

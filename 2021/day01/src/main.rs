@@ -1,29 +1,25 @@
 // https://adventofcode.com/2022/day/%DAY%
 
-use std::{path::Path, str::FromStr};
-
-use aoc::{aoc_input, get_input};
+use aoc::input::AocInput;
 
 fn main() {
-    let path = aoc_input();
-    println!("Part 1: {}", part1(&path));
-    println!("Part 2: {}", part2(&path));
+    println!("Part 1: {}", part1(AocInput::from_input()));
+    println!("Part 2: {}", part2(AocInput::from_input()));
 }
 
-fn part1(path: impl AsRef<Path>) -> usize {
-    let input: Vec<_> = get_input(path)
-        .map(|line| usize::from_str(&line).unwrap())
-        .collect();
-
-    input.windows(2).filter(|slice| slice[1] > slice[0]).count()
+fn part1(input: AocInput) -> usize {
+    input
+        .parsed::<usize>()
+        .into_vec()
+        .windows(2)
+        .filter(|slice| slice[1] > slice[0])
+        .count()
 }
 
-fn part2(path: impl AsRef<Path>) -> usize {
-    let input: Vec<_> = get_input(path)
-        .map(|line| usize::from_str(&line).unwrap())
-        .collect();
-
+fn part2(input: AocInput) -> usize {
     let input: Vec<_> = input
+        .parsed::<usize>()
+        .into_vec()
         .windows(3)
         .map(|slice| slice.iter().sum::<usize>())
         .collect();
@@ -33,17 +29,15 @@ fn part2(path: impl AsRef<Path>) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use aoc::aoc_sample_input;
-
     use super::*;
 
     #[test]
     fn test_part1() {
-        assert_eq!(7, part1(aoc_sample_input()));
+        assert_eq!(7, part1(AocInput::from_sample()));
     }
 
     #[test]
     fn test_part2() {
-        assert_eq!(5, part2(aoc_sample_input()));
+        assert_eq!(5, part2(AocInput::from_sample()));
     }
 }
