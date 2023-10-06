@@ -1,4 +1,4 @@
-// https://adventofcode.com/2022/day/%DAY%
+// https://adventofcode.com/%YEAR%/day/%DAY%
 
 use std::path::Path;
 
