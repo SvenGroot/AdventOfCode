@@ -13,28 +13,42 @@ if ($Year -eq 0) {
         Measure-Object -Maximum).Maximum
 }
 
-
+$basePath = Join-Path $PSScriptRoot $Year
 if ($Day -eq 0) {
-    $Day = (Get-ChildItem $PSScriptRoot -Filter "day*" | 
+    $Day = (Get-ChildItem $basePath -Filter "day*" | 
         ForEach-Object { $_.Name.Substring(3) } | 
         Measure-Object -Maximum).Maximum + 1
 }
 
 $source = "$PSScriptRoot/template"
-$dest = "$PSScriptRoot/$Year/day$($Day.ToString("00"))"
+$dest = "$basePath/day$($Day.ToString("00"))"
 Copy-Item $source $dest -Recurse | Out-Null
-Get-ChildItem $source -Recurse | ForEach-Object {
-    $destFile = Join-Path $dest $_.Name
+Get-ChildItem $source -Recurse -File | ForEach-Object {
+    $relative = [System.IO.Path]::GetRelativePath($source, $_)
+    $destFile = Join-Path $dest $relative
+    Write-Verbose "Doing replacements on $destFile"
     Get-Content $_ | ForEach-Object {
         $_.Replace("%DAY%", $Day).Replace("%YEAR%", $Year)
     } | Set-Content $destFile
 }
 
-New-Item "$PSScriptRoot/$Year/input/sample/day$Day.txt" | Out-Null
+$samplePath = Join-Path "$basePath" "input" "sample" "day$Day.txt"
+if (Test-Path $samplePath) {
+    Write-Warning "$samplePath already exists."
 
-$session = [Microsoft.PowerShell.Commands.WebRequestSession]::new()
-$cookie = [System.Net.Cookie]::new("session", $SessionId, "/", ".adventofcode.com")
-$session.Cookies.Add($cookie)
-Invoke-WebRequest "https://adventofcode.com/$Year/day/$Day/input" -WebSession $session -OutFile "$PSScriptRoot/$Year/input/day$Day.txt"
+} else {
+    New-Item "$basePath/input/sample/day$Day.txt" | Out-Null
+}
+
+$inputPath = Join-Path "$basePath" "input" "day$Day.txt"
+if (Test-Path $inputPath) {
+    Write-Warning "$inputPath already exists."
+    
+} else {
+    $session = [Microsoft.PowerShell.Commands.WebRequestSession]::new()
+    $cookie = [System.Net.Cookie]::new("session", $SessionId, "/", ".adventofcode.com")
+    $session.Cookies.Add($cookie)
+    Invoke-WebRequest "https://adventofcode.com/$Year/day/$Day/input" -WebSession $session -OutFile $inputPath 
+}
 
 "Created day $Day"

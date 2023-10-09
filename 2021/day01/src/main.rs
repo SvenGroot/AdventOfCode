@@ -1,4 +1,4 @@
-// https://adventofcode.com/2022/day/%DAY%
+// https://adventofcode.com/2021/day/1
 
 use aoc::input::AocInput;
 

@@ -1,6 +1,6 @@
-use std::{ops::Deref, path::Path, str::FromStr};
+use std::{path::Path, str::FromStr};
 
-use crate::{aoc_input, aoc_sample_input, get_input, FileInput};
+use crate::{aoc_input, aoc_sample_input, get_input, iterator::IntoVec, FileInput};
 
 #[derive(Clone)]
 pub struct AocInput<T = String, I = FileInput>(I)
@@ -45,23 +45,14 @@ impl<I: Iterator<Item = String>> AocInput<String, I> {
 
 impl<T, I: Iterator<Item = T>> AocInput<T, I> {
     pub fn into_vec(self) -> Vec<T> {
-        self.0.collect()
+        self.0.into_vec()
     }
 }
 
-impl<T, I: Iterator<Item = T>> IntoIterator for AocInput<T, I> {
-    type IntoIter = I;
+impl<T, I: Iterator<Item = T>> Iterator for AocInput<T, I> {
     type Item = T;
 
-    fn into_iter(self) -> Self::IntoIter {
-        self.0
-    }
-}
-
-impl<T, I: Iterator<Item = T>> Deref for AocInput<T, I> {
-    type Target = I;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
     }
 }

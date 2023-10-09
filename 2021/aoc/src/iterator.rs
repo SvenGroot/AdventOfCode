@@ -69,3 +69,14 @@ impl<I: Iterator> PeekableExt<I> for Peekable<I> {
         }
     }
 }
+
+pub trait IntoVec
+where
+    Self: Iterator + Sized,
+{
+    fn into_vec(self) -> Vec<Self::Item> {
+        self.collect()
+    }
+}
+
+impl<T: Iterator> IntoVec for T {}
