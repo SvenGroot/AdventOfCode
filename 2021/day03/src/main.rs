@@ -13,20 +13,8 @@ fn main() {
 fn part1(input: AocInput) -> usize {
     let input = input.into_vec();
     let len = input[0].len();
-    let count = input.len();
     let gamma_rate: usize = (0..len)
-        .map(|index| {
-            if input
-                .iter()
-                .filter(|line| line.as_bytes()[index] == b'1')
-                .count()
-                > count / 2
-            {
-                1 << (len - index - 1)
-            } else {
-                0
-            }
-        })
+        .map(|bit_pos| get_most_common_bit(&input, bit_pos) << (len - bit_pos - 1))
         .sum();
 
     // Epsilon is just the bitwise not of gamma, only considering bits that are part of the number.
@@ -35,8 +23,41 @@ fn part1(input: AocInput) -> usize {
     gamma_rate * epsilon_rate
 }
 
+// Find the ratings by eliminating numbers that don't match the most/least common bit at that index,
+// for each index until there is only one number left.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let input = input.into_vec();
+    let o2_rating = find_rating(input.clone(), false);
+    let co2_rating = find_rating(input.clone(), true);
+    println!("Oxygen generator rating: {o2_rating}; CO2 scrubber rating: {co2_rating}");
+    o2_rating * co2_rating
+}
+
+fn get_most_common_bit(input: &[String], bit_pos: usize) -> usize {
+    let one_count = input
+        .iter()
+        .filter(|line| line.as_bytes()[bit_pos] == b'1')
+        .count();
+
+    let zero_count = input.len() - one_count;
+    (one_count >= zero_count).into()
+}
+
+fn find_rating(mut values: Vec<String>, least_common: bool) -> usize {
+    let mut bit_pos = 0;
+    while values.len() > 1 {
+        let mut compare_bit = get_most_common_bit(&values, bit_pos) as u8;
+        // Invert the bit if least common is wanted.
+        if least_common {
+            compare_bit = (compare_bit == 0).into();
+        }
+
+        compare_bit += b'0';
+        values.retain(|value| value.as_bytes()[bit_pos] == compare_bit);
+        bit_pos += 1;
+    }
+
+    usize::from_str_radix(&values[0], 2).unwrap()
 }
 
 #[cfg(test)]
@@ -50,6 +71,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(230, part2(AocInput::from_sample()));
     }
 }
