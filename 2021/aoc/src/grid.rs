@@ -8,7 +8,6 @@ use std::{
     fmt::Display,
     num::NonZeroUsize,
     ops::{Index, IndexMut},
-    path::Path,
 };
 
 pub use builder::GridBuilder;
@@ -19,10 +18,6 @@ pub use subgrid::SubGrid;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Grid<T>(Vec<Vec<T>>);
-
-pub fn grid_from_file(path: impl AsRef<Path>) -> Grid<u8> {
-    GridBuilder::from_file(path).build()
-}
 
 impl<T: Clone> Grid<T> {
     pub fn new(height: NonZeroUsize, width: NonZeroUsize, value: T) -> Self {

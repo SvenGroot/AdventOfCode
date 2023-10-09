@@ -1,6 +1,7 @@
 use std::{
+    iter::Sum,
     num::TryFromIntError,
-    ops::{Add, AddAssign, Sub, SubAssign},
+    ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign},
 };
 
 use super::Point;
@@ -38,6 +39,23 @@ impl PointDiff {
     }
 
     pub fn from_char(input: u8, up: u8, right: u8, down: u8, left: u8) -> Option<Self> {
+        if input == up {
+            Some(PointDiff::UP)
+        } else if input == right {
+            Some(PointDiff::RIGHT)
+        } else if input == down {
+            Some(PointDiff::DOWN)
+        } else if input == left {
+            Some(PointDiff::LEFT)
+        } else {
+            None
+        }
+    }
+
+    /// Parses into one of four directions listed in `dirs`, in the order \[up, right, down, left].
+    pub fn from_str(input: impl AsRef<str>, dirs: [&str; 4]) -> Option<Self> {
+        let [up, right, down, left] = dirs;
+        let input = input.as_ref();
         if input == up {
             Some(PointDiff::UP)
         } else if input == right {
@@ -133,10 +151,34 @@ impl Sub for PointDiff {
     }
 }
 
+impl Mul<isize> for PointDiff {
+    type Output = PointDiff;
+
+    fn mul(self, rhs: isize) -> Self::Output {
+        Self {
+            row: self.row * rhs,
+            col: self.col * rhs,
+        }
+    }
+}
+
+impl MulAssign<isize> for PointDiff {
+    fn mul_assign(&mut self, rhs: isize) {
+        self.row *= rhs;
+        self.col *= rhs;
+    }
+}
+
 impl SubAssign for PointDiff {
     fn sub_assign(&mut self, rhs: Self) {
         self.row -= rhs.row;
         self.col -= rhs.col;
+    }
+}
+
+impl Sum for PointDiff {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(PointDiff::default(), |x, y| x + y)
     }
 }
 

@@ -1,6 +1,4 @@
-use std::path::Path;
-
-use crate::{get_input, FileInput};
+use crate::input::AocInput;
 
 use super::Grid;
 
@@ -14,10 +12,10 @@ where
     extend: Option<(usize, usize, u8)>,
 }
 
-impl GridBuilder<u8, FileInput, String> {
-    pub fn from_file(path: impl AsRef<Path>) -> Self {
+impl GridBuilder<u8, AocInput, String> {
+    pub fn from_input(input: AocInput) -> Self {
         Self {
-            input: get_input(path),
+            input,
             transform: Box::new(|byte| byte),
             extend: None,
         }

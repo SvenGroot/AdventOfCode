@@ -1,6 +1,16 @@
-use std::{path::Path, str::FromStr};
+use std::{
+    env::current_exe,
+    ffi::OsStr,
+    fs::File,
+    io::{BufRead, BufReader, Lines},
+    iter::Map,
+    path::{Component, Path, PathBuf},
+    str::FromStr,
+};
 
-use crate::{aoc_input, aoc_sample_input, get_input, iterator::IntoVec, FileInput};
+use crate::iterator::IntoVec;
+
+pub type FileInput = Map<Lines<BufReader<File>>, fn(std::io::Result<String>) -> String>;
 
 #[derive(Clone)]
 pub struct AocInput<T = String, I = FileInput>(I)
@@ -8,16 +18,46 @@ where
     I: Iterator<Item = T>;
 
 impl AocInput<String, FileInput> {
+    pub fn get_path(sample: bool) -> PathBuf {
+        let path = current_exe().unwrap();
+        let mut name = path.file_name().unwrap().to_str().unwrap();
+        if let Some(index) = name.find('-') {
+            name = &name[..index];
+        }
+
+        let mut input: PathBuf = path
+            .components()
+            .take_while(|c| *c != Component::Normal(OsStr::new("target")))
+            .collect();
+
+        input.push("input");
+        if sample {
+            input.push("sample");
+        }
+
+        input.push(name);
+        input.set_extension("txt");
+        input
+    }
+
     pub fn from_file(path: impl AsRef<Path>) -> Self {
-        AocInput(get_input(path))
+        AocInput(
+            BufReader::new(File::open(path).unwrap())
+                .lines()
+                .map(Result::unwrap),
+        )
     }
 
     pub fn from_input() -> Self {
-        Self::from_file(aoc_input())
+        Self::from_file(Self::get_path(false))
     }
 
     pub fn from_sample() -> Self {
-        Self::from_file(aoc_sample_input())
+        Self::from_file(Self::get_path(true))
+    }
+
+    pub fn single_line(mut self) -> String {
+        self.0.next().unwrap()
     }
 }
 
