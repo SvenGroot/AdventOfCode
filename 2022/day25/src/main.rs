@@ -60,35 +60,22 @@ impl From<usize> for SnafuNumber {
         let mut base5 = format!("{}", radix_5(value));
         let mut carry = 0;
         // SAFETY: Only working in ASCII.
-        unsafe {
-            for digit in base5.as_bytes_mut().iter_mut().rev() {
-                let digit_value = *digit - b'0' + carry;
-                *digit = match digit_value {
-                    3 => {
-                        carry = 1;
-                        b'='
-                    }
-                    4 => {
-                        carry = 1;
-                        b'-'
-                    }
-                    5 => {
-                        carry = 1;
-                        b'0'
-                    }
-                    d => {
-                        carry = 0;
-                        d + b'0'
-                    }
-                };
-            }
-
-            if carry != 0 {
-                base5.insert(0, '1');
-            }
-
-            Self(base5)
+        for digit in unsafe { base5.as_bytes_mut() }.iter_mut().rev() {
+            let digit_value = *digit - b'0' + carry;
+            carry = (digit_value >= 3).into();
+            *digit = match digit_value {
+                3 => b'=',
+                4 => b'-',
+                5 => b'0',
+                d => d + b'0',
+            };
         }
+
+        if carry != 0 {
+            base5.insert(0, '1');
+        }
+
+        Self(base5)
     }
 }
 
