@@ -28,7 +28,7 @@ fn part1(input: AocInput) -> usize {
 fn part2(input: AocInput) -> usize {
     let input = input.into_vec();
     let o2_rating = find_rating(input.clone(), false);
-    let co2_rating = find_rating(input.clone(), true);
+    let co2_rating = find_rating(input, true);
     println!("Oxygen generator rating: {o2_rating}; CO2 scrubber rating: {co2_rating}");
     o2_rating * co2_rating
 }
