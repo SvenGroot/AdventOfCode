@@ -8,6 +8,7 @@ use std::{
     fmt::Display,
     num::NonZeroUsize,
     ops::{Index, IndexMut},
+    slice::Iter,
 };
 
 pub use builder::GridBuilder;
@@ -35,11 +36,19 @@ impl<T> Grid<T> {
     }
 
     pub fn get(&self, index: Point) -> Option<&T> {
-        self.0.get(index.row())?.get(index.col())
+        self.at(index.row(), index.col())
     }
 
     pub fn get_mut(&mut self, index: Point) -> Option<&mut T> {
-        self.0.get_mut(index.row())?.get_mut(index.col())
+        self.at_mut(index.row(), index.col())
+    }
+
+    pub fn at(&self, row: usize, col: usize) -> Option<&T> {
+        self.0.get(row)?.get(col)
+    }
+
+    pub fn at_mut(&mut self, row: usize, col: usize) -> Option<&mut T> {
+        self.0.get_mut(row)?.get_mut(col)
     }
 
     pub fn map<U>(&self, mut f: impl FnMut(&T) -> U) -> Grid<U> {
@@ -50,6 +59,14 @@ impl<T> Grid<T> {
             .collect();
 
         Grid(grid)
+    }
+
+    pub fn rows(&self) -> impl Iterator<Item = Iter<'_, T>> {
+        self.0.iter().map(|row| row.iter())
+    }
+
+    pub fn cols(&self) -> impl Iterator<Item = Scan<'_, T>> {
+        (0..self.width()).map(|col| self.scan(Point::new(0, col), PointDiff::DOWN))
     }
 
     pub fn cells(&self) -> impl Iterator<Item = (Point, &T)> {

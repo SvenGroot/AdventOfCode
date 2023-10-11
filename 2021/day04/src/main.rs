@@ -2,10 +2,7 @@
 
 use std::fmt::Display;
 
-use aoc::{
-    grid::{Grid, Point},
-    input::AocInput,
-};
+use aoc::{grid::Grid, input::AocInput};
 use colored::Colorize;
 
 fn main() {
@@ -13,12 +10,11 @@ fn main() {
     println!("Part 2: {}", part2(AocInput::from_input()));
 }
 
+// Determine the score of the winning bingo board.
 fn part1(input: AocInput) -> usize {
     let input = input.into_vec();
     let mut game: BingoGame = input.split(|line| line.is_empty()).collect();
-    game.boards[0].0[Point::new(0, 0)].1 = true;
-    println!("{game}");
-    0
+    game.play()
 }
 
 fn part2(input: AocInput) -> usize {
@@ -29,6 +25,22 @@ fn part2(input: AocInput) -> usize {
 struct BingoGame {
     numbers: Vec<usize>,
     boards: Vec<BingoBoard>,
+}
+
+impl BingoGame {
+    fn play(&mut self) -> usize {
+        for number in &self.numbers {
+            for board in &mut self.boards {
+                if board.play(*number) {
+                    println!("Winning board:");
+                    println!("{board}");
+                    return board.get_score(*number);
+                }
+            }
+        }
+
+        panic!("Nobody won");
+    }
 }
 
 impl<'a> FromIterator<&'a [String]> for BingoGame {
@@ -71,6 +83,29 @@ impl Display for BingoTile {
 #[derive(Debug)]
 struct BingoBoard(Grid<BingoTile>);
 
+impl BingoBoard {
+    fn play(&mut self, number: usize) -> bool {
+        for (_, cell) in self.0.cells_mut() {
+            if cell.0 == number {
+                cell.1 = true;
+            }
+        }
+
+        return self.0.rows().any(|mut row| row.all(|cell| cell.1))
+            || self.0.cols().any(|mut col| col.all(|cell| cell.1));
+    }
+
+    fn get_score(&self, final_number: usize) -> usize {
+        let sum: usize = self
+            .0
+            .cells()
+            .filter_map(|(_, cell)| (!cell.1).then_some(cell.0))
+            .sum();
+
+        sum * final_number
+    }
+}
+
 impl<'a> FromIterator<&'a String> for BingoBoard {
     fn from_iter<T: IntoIterator<Item = &'a String>>(iter: T) -> Self {
         BingoBoard(
@@ -111,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        assert_eq!(0, part1(AocInput::from_sample()));
+        assert_eq!(4512, part1(AocInput::from_sample()));
     }
 
     #[test]
