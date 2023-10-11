@@ -5,6 +5,7 @@ use std::str::FromStr;
 use aoc::{
     grid::{Grid, Point},
     input::AocInput,
+    iterator::IntoVec,
 };
 
 fn main() {
@@ -13,12 +14,18 @@ fn main() {
 }
 
 fn part1(input: AocInput) -> usize {
-    let map = VentMap::new(input.parsed::<LineSegment>().into_vec());
+    let map = VentMap::new(
+        input
+            .parsed::<LineSegment>()
+            .filter(|line| line.start.row() == line.end.row() || line.start.col() == line.end.col())
+            .into_vec(),
+    );
     map.overlap_count()
 }
 
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let map = VentMap::new(input.parsed::<LineSegment>().into_vec());
+    map.overlap_count()
 }
 
 struct VentMap(Grid<usize>);
@@ -40,11 +47,7 @@ impl VentMap {
         );
 
         for line in &input {
-            // Ignore non-straight lines.
-            let Some(line) = line.start.line_to(line.end) else {
-                continue;
-            };
-
+            let line = line.start.line_to(line.end).unwrap();
             for pt in line {
                 grid[pt] += 1;
             }
@@ -86,6 +89,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(12, part2(AocInput::from_sample()));
     }
 }

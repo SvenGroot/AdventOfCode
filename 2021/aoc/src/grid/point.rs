@@ -76,12 +76,13 @@ impl Point {
     }
 
     pub fn line_to(&self, other: Point) -> Option<Line> {
-        // One of them must match, can't handle non-straight lines yet.
-        if self.row != other.row && self.col != other.col {
+        let diff = other.diff(*self)?;
+        // It must be either a straight or diagonal line.
+        if self.row != other.row && self.col != other.col && diff.row().abs() != diff.col().abs() {
             return None;
         }
 
-        let direction = other.diff(*self)?.signum();
+        let direction = diff.signum();
         Some(Line {
             current: *self,
             end: other,
