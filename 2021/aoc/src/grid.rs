@@ -203,6 +203,13 @@ impl<T: Display> Display for Grid<T> {
     }
 }
 
+impl<T> FromIterator<Vec<T>> for Grid<T> {
+    fn from_iter<I: IntoIterator<Item = Vec<T>>>(iter: I) -> Self {
+        let grid: Vec<Vec<T>> = iter.into_iter().collect();
+        Self(grid)
+    }
+}
+
 pub struct Scan<'a, T> {
     grid: &'a Grid<T>,
     current: Option<Point>,
