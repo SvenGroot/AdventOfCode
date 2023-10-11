@@ -17,8 +17,11 @@ fn part1(input: AocInput) -> usize {
     game.play()
 }
 
+// Determine the score of the board that wins last.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let input = input.into_vec();
+    let mut game: BingoGame = input.split(|line| line.is_empty()).collect();
+    game.play_to_lose()
 }
 
 #[derive(Debug)]
@@ -40,6 +43,31 @@ impl BingoGame {
         }
 
         panic!("Nobody won");
+    }
+
+    fn play_to_lose(&mut self) -> usize {
+        let mut last_win = None;
+        let mut final_number = 0;
+        let mut boards_to_remove = Vec::new();
+        for number in &self.numbers {
+            boards_to_remove.clear();
+            for (index, board) in self.boards.iter_mut().enumerate() {
+                if board.play(*number) {
+                    last_win = Some(board.clone());
+                    final_number = *number;
+                    boards_to_remove.push(index);
+                }
+            }
+
+            for index in boards_to_remove.iter().rev() {
+                self.boards.remove(*index);
+            }
+        }
+
+        let last_win = last_win.unwrap();
+        println!("Last winning board:");
+        println!("{last_win}");
+        last_win.get_score(final_number)
     }
 }
 
@@ -67,7 +95,7 @@ impl Display for BingoGame {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct BingoTile(usize, bool);
 
 impl Display for BingoTile {
@@ -80,7 +108,7 @@ impl Display for BingoTile {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct BingoBoard(Grid<BingoTile>);
 
 impl BingoBoard {
@@ -151,6 +179,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(1924, part2(AocInput::from_sample()));
     }
 }
