@@ -13,6 +13,7 @@ fn main() {
     println!("Part 2: {}", part2(AocInput::from_input()));
 }
 
+// Number of points covered by more than one line, considering only straight lines.
 fn part1(input: AocInput) -> usize {
     let map = VentMap::new(
         input
@@ -23,6 +24,7 @@ fn part1(input: AocInput) -> usize {
     map.overlap_count()
 }
 
+// Number of points covered by more than one line, considering all lines.
 fn part2(input: AocInput) -> usize {
     let map = VentMap::new(input.parsed::<LineSegment>().into_vec());
     map.overlap_count()
