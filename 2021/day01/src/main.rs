@@ -1,6 +1,6 @@
 // https://adventofcode.com/2021/day/1
 
-use aoc::input::AocInput;
+use aoc::{input::AocInput, iterator::IntoVec};
 
 fn main() {
     println!("Part 1: {}", part1(AocInput::from_input()));
