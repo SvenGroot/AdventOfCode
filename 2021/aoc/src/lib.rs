@@ -1,3 +1,4 @@
+pub mod bitfield;
 pub mod circular_list;
 pub mod dijkstra;
 pub mod grid;
