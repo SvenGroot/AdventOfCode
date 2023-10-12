@@ -25,11 +25,7 @@ struct School([usize; 9]);
 impl School {
     fn new(input: AocInput) -> Self {
         let mut counts = [0; 9];
-        for fish in input
-            .single_line()
-            .split(',')
-            .map(|val| val.parse::<usize>().unwrap())
-        {
+        for fish in input.single_line_parsed::<usize>(',') {
             counts[fish] += 1;
         }
 

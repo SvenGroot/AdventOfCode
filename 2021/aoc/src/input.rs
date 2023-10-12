@@ -59,6 +59,16 @@ impl AocInput<String, FileInput> {
     pub fn single_line(mut self) -> String {
         self.0.next().unwrap()
     }
+
+    pub fn single_line_parsed<U: FromStr>(self, separator: char) -> Vec<U>
+    where
+        <U as std::str::FromStr>::Err: std::fmt::Debug,
+    {
+        self.single_line()
+            .split(separator)
+            .map(|val| val.parse().unwrap())
+            .collect()
+    }
 }
 
 impl<I: Iterator<Item = String>> AocInput<String, I> {
