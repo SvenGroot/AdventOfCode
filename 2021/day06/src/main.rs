@@ -13,39 +13,41 @@ fn part1(input: AocInput) -> usize {
     school.simulate(80)
 }
 
+// How many lanternfish after 256 days.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let mut school = School::new(input);
+    school.simulate(256)
 }
 
-struct School(Vec<usize>);
+// Array with fish count at each timer value.
+struct School([usize; 9]);
 
 impl School {
     fn new(input: AocInput) -> Self {
-        let fish = input
+        let mut counts = [0; 9];
+        for fish in input
             .single_line()
             .split(',')
-            .map(|val| val.parse().unwrap())
-            .collect();
+            .map(|val| val.parse::<usize>().unwrap())
+        {
+            counts[fish] += 1;
+        }
 
-        School(fish)
+        School(counts)
     }
 
     fn simulate(&mut self, days: usize) -> usize {
         for _ in 0..days {
-            let mut new_fish = 0;
-            for fish in &mut self.0 {
-                if *fish == 0 {
-                    new_fish += 1;
-                    *fish = 6;
-                } else {
-                    *fish -= 1;
-                }
+            let timer_zero_fish = self.0[0];
+            for timer_val in 1..9 {
+                self.0[timer_val - 1] = self.0[timer_val];
             }
 
-            self.0.resize(self.0.len() + new_fish, 8);
+            self.0[8] = timer_zero_fish; // newly created fish
+            self.0[6] += timer_zero_fish; // old fish with timer reset.
         }
 
-        self.0.len()
+        self.0.iter().sum()
     }
 }
 
@@ -60,6 +62,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(26984457539, part2(AocInput::from_sample()));
     }
 }
