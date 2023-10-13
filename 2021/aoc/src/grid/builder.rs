@@ -49,6 +49,10 @@ where
         }
     }
 
+    pub fn numbers(self) -> GridBuilder<u8, I, S> {
+        self.map(|byte| byte - b'0')
+    }
+
     /// Extends the grid in all directions by the specified amount.
     /// Use with 0 to make non-uniform input uniform.
     pub fn extend(self, width: usize, height: usize, value: u8) -> Self {
