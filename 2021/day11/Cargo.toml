@@ -8,3 +8,4 @@ version.workspace = true
 
 [dependencies]
 aoc.workspace = true
+colored.workspace = true

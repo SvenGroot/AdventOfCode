@@ -8,4 +8,4 @@ version.workspace = true
 
 [dependencies]
 aoc.workspace = true
-colored = "2.0.4"
+colored.workspace = true

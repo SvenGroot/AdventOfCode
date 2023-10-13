@@ -9,6 +9,7 @@ fn main() {
     println!("Part 2: {}", part2(AocInput::from_input()));
 }
 
+// Find corrupted lines (mismatched closing brace)
 fn part1(input: AocInput) -> usize {
     input
         .parsed::<ParsedLine>()
@@ -16,6 +17,7 @@ fn part1(input: AocInput) -> usize {
         .sum()
 }
 
+// Finish incomplete lines.
 fn part2(input: AocInput) -> usize {
     let mut scores = input
         .parsed::<ParsedLine>()
