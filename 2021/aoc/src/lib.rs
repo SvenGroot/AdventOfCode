@@ -1,6 +1,7 @@
 pub mod bitfield;
 pub mod circular_list;
 pub mod dijkstra;
+pub mod graph;
 pub mod grid;
 pub mod grid3d;
 pub mod input;
