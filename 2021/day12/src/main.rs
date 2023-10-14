@@ -18,13 +18,15 @@ fn part1(input: AocInput) -> usize {
 }
 
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let caves = CaveGraph::from_input(input);
+    *caves.allow_double_small.borrow_mut() = true;
+    caves.find_paths()
 }
 
 #[derive(PartialEq, Eq)]
 enum CaveKind {
     Big,
-    Small(bool),
+    Small(u8),
 }
 
 struct Cave {
@@ -39,27 +41,40 @@ impl PartialEq<str> for Cave {
 }
 
 impl Cave {
-    fn should_visit(&self) -> bool {
+    fn should_visit(&self, allow_double_small: &mut bool) -> bool {
         let mut kind = self.kind.borrow_mut();
-        match *kind {
-            CaveKind::Small(false) => {
-                *kind = CaveKind::Small(true);
-                true
+        match &mut *kind {
+            CaveKind::Small(visit_count) => {
+                if *visit_count == 0 || *visit_count == 1 && *allow_double_small {
+                    *visit_count += 1;
+                    if *visit_count == 2 {
+                        *allow_double_small = false;
+                    }
+
+                    true
+                } else {
+                    false
+                }
             }
             CaveKind::Big => true,
-            _ => false,
         }
     }
 
-    fn unvisit(&self) {
+    fn unvisit(&self, allow_double_small: &mut bool) {
         let mut kind = self.kind.borrow_mut();
-        if *kind == CaveKind::Small(true) {
-            *kind = CaveKind::Small(false);
+        if let CaveKind::Small(visit_count) = &mut *kind {
+            *visit_count -= 1;
+            if *visit_count == 1 {
+                *allow_double_small = true;
+            }
         }
     }
 }
 
-struct CaveGraph(Graph<Cave>);
+struct CaveGraph {
+    graph: Graph<Cave>,
+    allow_double_small: RefCell<bool>,
+}
 
 impl CaveGraph {
     fn from_input(input: AocInput) -> Self {
@@ -72,31 +87,35 @@ impl CaveGraph {
             graph.add_edge_by_id(to, from);
         }
 
-        Self(graph)
+        Self {
+            graph,
+            allow_double_small: RefCell::new(false),
+        }
     }
 
     fn find_paths(&self) -> usize {
-        let start = &self.0[self.0.find_vertex("start").unwrap()];
-        assert!(start.value().should_visit());
+        let start = &self.graph[self.graph.find_vertex("start").unwrap()];
         self.find_path_core(start)
     }
 
     fn find_path_core(&self, vertex: &GraphVertex<Cave>) -> usize {
-        // println!("> {}", vertex.value().name);
         if vertex.value().name == "end" {
             return 1;
         }
 
         let mut count = 0;
         for nb in vertex.neighbors() {
-            let nb = &self.0[*nb];
-            if nb.value().should_visit() {
+            let nb = &self.graph[*nb];
+            if nb
+                .value()
+                .should_visit(&mut self.allow_double_small.borrow_mut())
+            {
                 count += self.find_path_core(nb);
-                nb.value().unvisit();
+                nb.value()
+                    .unvisit(&mut self.allow_double_small.borrow_mut());
             }
         }
 
-        // println!("< {}", vertex.value().name);
         count
     }
 
@@ -108,7 +127,7 @@ impl CaveGraph {
         let kind = RefCell::new(if name.as_bytes()[0].is_ascii_uppercase() {
             CaveKind::Big
         } else {
-            CaveKind::Small(false)
+            CaveKind::Small(if name == "start" { 2 } else { 0 })
         });
 
         graph.add_vertex(Cave { name, kind })
@@ -126,6 +145,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(3509, part2(AocInput::from_sample()));
     }
 }
