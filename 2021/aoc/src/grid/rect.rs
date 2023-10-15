@@ -27,6 +27,23 @@ impl Rectangle {
         }
     }
 
+    pub fn from_points<'a>(iter: impl Iterator<Item = &'a Point>) -> Self {
+        let (top_left, bottom_right) = iter.fold(
+            (Point::new(usize::MAX, usize::MAX), Point::default()),
+            |(top_left, bottom_right), new| {
+                (
+                    Point::new(top_left.row().min(new.row()), top_left.col().min(new.col())),
+                    Point::new(
+                        bottom_right.row().max(new.row()),
+                        bottom_right.col().max(new.col()),
+                    ),
+                )
+            },
+        );
+
+        Rectangle::new(top_left, bottom_right)
+    }
+
     pub fn top_left(&self) -> Point {
         self.top_left
     }

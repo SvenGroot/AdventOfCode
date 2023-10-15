@@ -24,6 +24,32 @@ impl<T: Clone> Grid<T> {
     pub fn new(height: NonZeroUsize, width: NonZeroUsize, value: T) -> Self {
         Self(vec![vec![value; width.into()]; height.into()])
     }
+
+    pub fn from_points(points: Vec<Point>, empty_val: T, set_val: T) -> Self {
+        let bounding_rect = Rectangle::from_points(points.iter());
+        let mut result = Grid::new(
+            bounding_rect.height().try_into().unwrap(),
+            bounding_rect.width().try_into().unwrap(),
+            empty_val,
+        );
+        for pos in &points {
+            result[*pos] = set_val.clone();
+        }
+
+        result
+    }
+
+    pub fn from_string_points(
+        points: impl Iterator<Item = impl AsRef<str>>,
+        empty_val: T,
+        set_val: T,
+    ) -> Self {
+        Self::from_points(
+            points.map(|item| item.as_ref().parse().unwrap()).collect(),
+            empty_val,
+            set_val,
+        )
+    }
 }
 
 impl<T> Grid<T> {
@@ -188,6 +214,13 @@ impl<T> Grid<T> {
             grid: self,
             current: Some(start),
             direction,
+        }
+    }
+
+    pub fn shrink(&mut self, height: usize, width: usize) {
+        self.0.truncate(height);
+        for row in &mut self.0 {
+            row.truncate(width);
         }
     }
 }
