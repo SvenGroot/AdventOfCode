@@ -1,6 +1,9 @@
 // https://adventofcode.com/2021/day/14
 
-use std::str::{self, FromStr};
+use std::{
+    collections::HashMap,
+    str::{self, FromStr},
+};
 
 use aoc::{input::AocInput, iterator::IntoVec};
 
@@ -52,6 +55,11 @@ impl Polymer {
             elements[(*elt - b'A') as usize] += 1;
         }
 
+        let mut state = State {
+            elements,
+            seen: HashMap::new(),
+        };
+
         for pair in self.template.windows(2) {
             let pair = str::from_utf8(pair).unwrap();
             let rule_index = self
@@ -60,26 +68,50 @@ impl Polymer {
                 .position(|rule| rule.pair == pair)
                 .unwrap();
 
-            println!("Processing {pair}");
-            self.process_rule(&mut elements, rule_index, steps - 1)
+            self.process_rule(&mut state, rule_index, steps - 1)
         }
 
-        let max = elements.iter().max().unwrap();
-        let min = elements.iter().filter(|elt| **elt != 0).min().unwrap();
+        let max = state.elements.iter().max().unwrap();
+        let min = state
+            .elements
+            .iter()
+            .filter(|elt| **elt != 0)
+            .min()
+            .unwrap();
+
         println!("Min: {min}, max: {max}");
         max - min
     }
 
-    fn process_rule(&self, elements: &mut [usize], rule_index: usize, steps: usize) {
-        let rule = &self.rules[rule_index];
-        elements[rule.element_index] += 1;
-        if steps == 0 {
+    fn process_rule(&self, state: &mut State, rule_index: usize, steps: usize) {
+        if let Some(seen) = state.seen.get(&(rule_index, steps)) {
+            for (elt, count) in seen.iter().enumerate() {
+                state.elements[elt] += count;
+            }
+
             return;
         }
 
-        self.process_rule(elements, rule.new_pairs.0, steps - 1);
-        self.process_rule(elements, rule.new_pairs.1, steps - 1);
+        let mut elements_pre = state.elements.to_owned();
+        let rule = &self.rules[rule_index];
+        state.elements[rule.element_index] += 1;
+        if steps != 0 {
+            self.process_rule(state, rule.new_pairs.0, steps - 1);
+            self.process_rule(state, rule.new_pairs.1, steps - 1);
+        }
+
+        for (elt, count) in state.elements.iter().enumerate() {
+            elements_pre[elt] = count - elements_pre[elt];
+        }
+
+        state.seen.insert((rule_index, steps), elements_pre);
+        // println!("Adding ({rule_index}, {steps})");
     }
+}
+
+struct State {
+    elements: [usize; 26],
+    seen: HashMap<(usize, usize), [usize; 26]>,
 }
 
 struct RawRule {
