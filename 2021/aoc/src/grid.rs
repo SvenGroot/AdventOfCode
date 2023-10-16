@@ -8,7 +8,7 @@ use std::{
     fmt::Display,
     num::NonZeroUsize,
     ops::{Index, IndexMut},
-    slice::Iter,
+    slice::{Iter, IterMut},
 };
 
 pub use builder::GridBuilder;
@@ -89,6 +89,10 @@ impl<T> Grid<T> {
 
     pub fn rows(&self) -> impl Iterator<Item = Iter<'_, T>> {
         self.0.iter().map(|row| row.iter())
+    }
+
+    pub fn rows_mut(&mut self) -> impl Iterator<Item = IterMut<'_, T>> {
+        self.0.iter_mut().map(|row| row.iter_mut())
     }
 
     pub fn cols(&self) -> impl Iterator<Item = Scan<'_, T>> {
@@ -221,6 +225,13 @@ impl<T> Grid<T> {
         self.0.truncate(height);
         for row in &mut self.0 {
             row.truncate(width);
+        }
+    }
+
+    pub fn resize_with(&mut self, height: usize, width: usize, mut f: impl FnMut() -> T) {
+        self.0.resize_with(height, || Vec::new());
+        for row in &mut self.0 {
+            row.resize_with(width, &mut f)
         }
     }
 }
