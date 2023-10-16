@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bitvec.workspace = true
+funty.workspace = true
 num.workspace = true
 priority-queue.workspace = true
 thiserror.workspace = true

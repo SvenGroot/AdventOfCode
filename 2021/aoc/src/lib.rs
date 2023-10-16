@@ -1,4 +1,5 @@
 pub mod bitfield;
+pub mod bitreader;
 pub mod circular_list;
 pub mod dijkstra;
 pub mod graph;

@@ -99,3 +99,19 @@ impl Iterator for AocInput {
         self.0.next()
     }
 }
+
+pub trait ParseHex {
+    fn parse_hex(&self) -> Vec<u8>;
+}
+
+impl ParseHex for &str {
+    fn parse_hex(&self) -> Vec<u8> {
+        self.as_bytes()
+            .chunks_exact(2)
+            .map(|chunk| {
+                let chunk = std::str::from_utf8(chunk).unwrap();
+                u8::from_str_radix(chunk, 16).unwrap()
+            })
+            .collect()
+    }
+}
