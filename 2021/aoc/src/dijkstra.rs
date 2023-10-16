@@ -31,8 +31,7 @@ where
     let mut path = Vec::new();
     if info[dest].previous.is_some() || *dest == *source {
         let mut current = Some(*dest);
-        while current.is_some() {
-            let vertex = current.unwrap();
+        while let Some(vertex) = current {
             path.push(vertex);
             current = info[&vertex].previous;
         }
