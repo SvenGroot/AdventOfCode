@@ -1,5 +1,5 @@
 [package]
-name = "day16"
+name = "day17"
 edition = "2021"
 authors.workspace = true
 version.workspace = true
@@ -8,4 +8,4 @@ version.workspace = true
 
 [dependencies]
 aoc.workspace = true
-bitvec.workspace = true
+text_io.workspace = true

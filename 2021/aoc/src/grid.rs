@@ -14,7 +14,7 @@ use std::{
 pub use builder::GridBuilder;
 pub use point::{Line, Neighbors, Point};
 pub use pointdiff::{PointDiff, Rotation};
-pub use rect::Rectangle;
+pub use rect::{DiffRectangle, Rectangle};
 pub use subgrid::SubGrid;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
