@@ -17,7 +17,8 @@ fn part1(input: AocInput) -> isize {
 }
 
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let target = get_target_area(input);
+    get_hit_count(&target)
 }
 
 fn get_target_area(input: AocInput) -> DiffRectangle {
@@ -32,19 +33,11 @@ fn get_target_area(input: AocInput) -> DiffRectangle {
     DiffRectangle::new(top_left, bottom_right)
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum ShotResult {
-    Hit(PointDiff),
-    NotHitYet,
-    Short,
-    Overshot,
-}
-
 fn find_max_y(target: &DiffRectangle) -> isize {
     let mut max_y = 0;
+    // Just pick some random reasonable upper bound for the search to make the code simpler.
     for y in 1..1000 {
-        let (result, current_max_y) = find_hit(y, target);
-        if matches!(result, ShotResult::Hit(_)) {
+        if let Some(current_max_y) = find_hit(y, target) {
             max_y = max_y.max(current_max_y);
         }
     }
@@ -52,26 +45,46 @@ fn find_max_y(target: &DiffRectangle) -> isize {
     max_y
 }
 
-fn find_hit(initial_y: isize, target: &DiffRectangle) -> (ShotResult, isize) {
-    for x in 1..=isize::MAX {
-        let (result, max_y) = hits_target(PointDiff::new(initial_y, x), target);
-        if result != ShotResult::NotHitYet && result != ShotResult::Short {
-            return (result, max_y);
+fn get_hit_count(target: &DiffRectangle) -> usize {
+    let mut count = 0;
+    // Because the rectangle is upside down, top_left is actually the lower y value.
+    for y in target.top_left().row()..1000 {
+        for x in 1..=target.bottom_right().col() + 1 {
+            let velocity = PointDiff::new(y, x);
+            if hits_target(velocity, target).is_some() {
+                count += 1
+            }
         }
     }
 
-    unreachable!();
+    count
 }
 
-fn hits_target(mut velocity: PointDiff, target: &DiffRectangle) -> (ShotResult, isize) {
+fn find_hit(initial_y: isize, target: &DiffRectangle) -> Option<isize> {
+    for x in 1..=target.bottom_right().col() + 1 {
+        if let Some((_, max_y)) = hits_target(PointDiff::new(initial_y, x), target) {
+            return Some(max_y);
+        }
+    }
+
+    None
+}
+
+// There's probably math you could use to determine if it hits rather than simulating the
+// trajectory, but this works and is fast enough.
+fn hits_target(mut velocity: PointDiff, target: &DiffRectangle) -> Option<(PointDiff, isize)> {
     let mut max_y = 0;
     let mut pos = PointDiff::default();
     loop {
         pos += velocity;
         max_y = max_y.max(pos.row());
-        let result = check_hit(pos, target);
-        if result != ShotResult::NotHitYet {
-            return (result, max_y);
+        if target.contains(pos) {
+            return Some((pos, max_y));
+        }
+
+        if pos.row() < target.top_left().row() || pos.col() > target.bottom_right().col() {
+            // Overshot either in x or y direction; will not hit.
+            return None;
         }
 
         velocity = PointDiff::new(
@@ -82,20 +95,6 @@ fn hits_target(mut velocity: PointDiff, target: &DiffRectangle) -> (ShotResult, 
                 velocity.col() - 1
             },
         )
-    }
-}
-
-fn check_hit(pos: PointDiff, target: &DiffRectangle) -> ShotResult {
-    if target.contains(pos) {
-        ShotResult::Hit(pos)
-    } else if pos.col() > target.bottom_right().col()
-        || pos.col() >= target.top_left().col() && pos.row() < target.bottom_right().row()
-    {
-        ShotResult::Overshot
-    } else if pos.row() < target.bottom_right().row() {
-        ShotResult::Short
-    } else {
-        ShotResult::NotHitYet
     }
 }
 
@@ -110,14 +109,14 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(112, part2(AocInput::from_sample()));
     }
 
     #[test]
     fn test_hit_target() {
         let target = get_target_area(AocInput::from_sample());
-        let (result, max_y) = hits_target(PointDiff::new(2, 7), &target);
-        assert_eq!(ShotResult::Hit(PointDiff::new(-7, 28)), result);
+        let (result, max_y) = hits_target(PointDiff::new(2, 7), &target).unwrap();
+        assert_eq!(PointDiff::new(-7, 28), result);
         assert_eq!(3, max_y);
     }
 }
