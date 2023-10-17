@@ -4,7 +4,9 @@ use std::{iter::Sum, ops::Add, str::FromStr};
 
 use aoc::{
     input::AocInput,
+    iterator::IntoVec,
     nested_list::{Item, NestedList},
+    slice::SliceCombinator,
 };
 
 fn main() {
@@ -19,11 +21,18 @@ fn part1(input: AocInput) -> usize {
     sum.magnitude()
 }
 
+// Get the largest magnitude you can get by adding any two of the numbers in the input.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let numbers = input.parsed::<SnailfishNumber>().into_vec();
+    numbers
+        .as_slice()
+        .combinations()
+        .map(|(first, second)| (first.clone() + second.clone()).magnitude())
+        .max()
+        .unwrap()
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct SnailfishNumber(NestedList<u8>);
 
 impl SnailfishNumber {
@@ -167,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(3993, part2(AocInput::from_sample()));
     }
 
     #[test]

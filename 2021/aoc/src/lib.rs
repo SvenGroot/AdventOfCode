@@ -8,6 +8,7 @@ pub mod grid3d;
 pub mod input;
 pub mod iterator;
 pub mod nested_list;
+pub mod slice;
 pub mod tree;
 
 use num::Integer;

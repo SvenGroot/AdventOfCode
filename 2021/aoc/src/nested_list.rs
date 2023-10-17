@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use std::str;
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Item<T> {
     Value(T),
     List(Vec<Item<T>>),
@@ -69,7 +69,7 @@ impl<T: Display> Display for Item<T> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct NestedList<T>(Vec<Item<T>>);
 
 impl<T> NestedList<T> {
