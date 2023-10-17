@@ -1,7 +1,9 @@
+use std::fmt::Display;
+use std::ops::{Deref, DerefMut};
 use std::str;
 use std::str::FromStr;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Item<T> {
     Value(T),
     List(Vec<Item<T>>),
@@ -58,11 +60,29 @@ impl<T: FromStr> Item<T> {
     }
 }
 
+impl<T: Display> Display for Item<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Item::Value(val) => write!(f, "{val}"),
+            Item::List(list) => fmt_list(list, f),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub struct NestedList<T>(Vec<Item<T>>);
 
 impl<T> NestedList<T> {
     pub fn items(&self) -> &Vec<Item<T>> {
         &self.0
+    }
+
+    pub fn items_mut(&mut self) -> &mut Vec<Item<T>> {
+        &mut self.0
+    }
+
+    pub fn combine(self, other: NestedList<T>) -> Self {
+        vec![Item::List(self.0), Item::List(other.0)].into()
     }
 }
 
@@ -83,6 +103,54 @@ impl<T: FromStr> FromStr for NestedList<T> {
 
         Ok(Self(list))
     }
+}
+
+impl<T: Display> Display for NestedList<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fmt_list(&self.0, f)
+    }
+}
+
+impl<T> From<NestedList<T>> for Vec<Item<T>> {
+    fn from(value: NestedList<T>) -> Self {
+        value.0
+    }
+}
+
+impl<T> From<Vec<Item<T>>> for NestedList<T> {
+    fn from(value: Vec<Item<T>>) -> Self {
+        Self(value)
+    }
+}
+
+impl<T> Deref for NestedList<T> {
+    type Target = Vec<Item<T>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for NestedList<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+fn fmt_list<T: Display>(list: &Vec<Item<T>>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "[")?;
+    let mut first = true;
+    for item in list {
+        if first {
+            first = false;
+        } else {
+            write!(f, ",")?;
+        }
+
+        write!(f, "{item}")?;
+    }
+
+    write!(f, "]")
 }
 
 #[cfg(test)]
