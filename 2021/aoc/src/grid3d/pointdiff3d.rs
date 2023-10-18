@@ -1,4 +1,5 @@
 use std::{
+    fmt::Display,
     num::TryFromIntError,
     ops::{Add, AddAssign, Neg, Sub, SubAssign},
     str::FromStr,
@@ -95,6 +96,12 @@ impl FromStr for PointDiff3D {
             y: y.parse()?,
             z: z.parse()?,
         })
+    }
+}
+
+impl Display for PointDiff3D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{},{},{}", self.x, self.y, self.z)
     }
 }
 

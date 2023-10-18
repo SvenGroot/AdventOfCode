@@ -41,7 +41,7 @@ impl<'a, T> Iterator for SliceCombinations<'a, T> {
     }
 }
 
-pub trait SliceCombinator<T> {
+pub trait SliceExt<T> {
     /// Returns all combinations of two distinct items in a slice.
     ///
     /// Does not return (a, a), and will return both (a, b) and (b, a).
@@ -52,15 +52,30 @@ pub trait SliceCombinator<T> {
     ///
     /// Does not return (a, a), and if (a, b) is returned, (b, a) will not be.
     fn unordered_combinations(&self) -> SliceCombinations<'_, T>;
+
+    fn get_two_mut(&mut self, index1: usize, index2: usize) -> (&mut T, &mut T);
 }
 
-impl<T> SliceCombinator<T> for &[T] {
+impl<T> SliceExt<T> for [T] {
     fn combinations(&self) -> SliceCombinations<'_, T> {
         SliceCombinations::new(self, true)
     }
 
     fn unordered_combinations(&self) -> SliceCombinations<'_, T> {
         SliceCombinations::new(self, false)
+    }
+
+    fn get_two_mut(&mut self, index1: usize, index2: usize) -> (&mut T, &mut T) {
+        let lower = index1.min(index2);
+        let higher = index1.max(index2);
+        let split = lower + 1;
+        let (first, second) = self.split_at_mut(split);
+        let (first, second) = (&mut first[lower], &mut second[higher - split]);
+        if index1 < index2 {
+            (first, second)
+        } else {
+            (second, first)
+        }
     }
 }
 

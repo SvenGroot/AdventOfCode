@@ -1,8 +1,8 @@
 // https://adventofcode.com/2021/day/19
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use aoc::{grid3d::PointDiff3D, input::AocInput, slice::SliceCombinator};
+use aoc::{grid3d::PointDiff3D, input::AocInput, slice::SliceExt};
 
 fn main() {
     println!("Part 1: {}", part1(AocInput::from_input()));
@@ -12,7 +12,7 @@ fn main() {
 fn part1(input: AocInput) -> usize {
     let mut scanners = Scanner::from_input(input);
     normalize_scanners(&mut scanners);
-    0
+    get_all_beacons(&scanners).len()
 }
 
 fn part2(input: AocInput) -> usize {
@@ -20,29 +20,35 @@ fn part2(input: AocInput) -> usize {
 }
 
 fn normalize_scanners(scanners: &mut [Scanner]) {
-    let mut seen = vec![false; scanners.len()];
-    seen[0] = true;
-    for x in 0..scanners.len() - 1 {
-        for y in 0..scanners.len() {
-            if seen[y] || x == y {
-                continue;
-            }
+    // Normalized contains indices of scanners that are already moved to be from the perspective of
+    // scanner 0, but have not yet been used to normalize other scanners.
+    let mut normalized = vec![0];
+    // Scanners that haven't been normalized yet.
+    let mut remaining: Vec<_> = (1..scanners.len()).collect();
 
-            if y > x {
-                let (first, second) = scanners.split_at_mut(x + 1);
-                if first[x].check_match(&mut second[y - x - 1]).is_some() {
-                    seen[y] = true;
-                }
+    while !remaining.is_empty() {
+        let current = normalized.pop().unwrap();
+        let mut new_remaining = Vec::new();
+        for index in &remaining {
+            let (current, other) = scanners.get_two_mut(current, *index);
+            if let Some(offset) = current.check_match(other) {
+                println!("Scanner {index} is at {offset}");
+                normalized.push(*index);
             } else {
-                let (first, second) = scanners.split_at_mut(y + 1);
-                if second[x - y - 1].check_match(&mut first[y]).is_some() {
-                    seen[y] = true;
-                }
+                new_remaining.push(*index);
             }
         }
-    }
 
-    assert!(seen.iter().all(|v| *v));
+        remaining = new_remaining
+    }
+}
+
+fn get_all_beacons(scanners: &[Scanner]) -> HashSet<PointDiff3D> {
+    scanners
+        .iter()
+        .flat_map(|scanner| scanner.beacons.iter())
+        .copied()
+        .collect()
 }
 
 #[derive(Clone)]
@@ -68,20 +74,6 @@ impl Scanner {
         Self { beacons }
     }
 
-    // /// Move all the beacons so they are positive from 0,0,0
-    // fn normalize(&mut self) {
-    //     let cube = DiffCube::from_points(self.beacons.iter());
-    //     let offset = cube.top_left_front();
-    //     self.mv(-offset);
-    //     self.offset = Some(offset);
-    // }
-
-    // fn unnormalize(&mut self) {
-    //     if let Some(offset) = self.offset.take() {
-    //         self.mv(offset);
-    //     }
-    // }
-
     fn mv(&mut self, offset: PointDiff3D) {
         for beacon in &mut self.beacons {
             *beacon += offset;
@@ -106,6 +98,10 @@ impl Scanner {
         }
     }
 
+    // Checks all possible rotations of other to see if it matches with self.
+    //
+    // If a match is found, other will be rotated and moved to have the same orientation and origin
+    // as self. If not, it will be rotated fully back to its starting orientation.
     fn check_match(&self, other: &mut Scanner) -> Option<PointDiff3D> {
         for _ in 0..4 {
             for _ in 0..4 {
@@ -128,7 +124,13 @@ impl Scanner {
         let mut prev = None;
         let mut match_count = 0;
         let mut matches = HashMap::new();
-        for (self1, self2) in self.beacons.as_slice().unordered_combinations() {
+
+        // To check if there's a match, we need to see if there are twelve beacons whose relative
+        // positions are the same. To do this, we check every combination of beacons from self
+        // against every combination of beacons from other.
+        for (self1, self2) in self.beacons.unordered_combinations() {
+            // self1 will only change if all values of self2 have been processed. Use this to check
+            // if we found enough matches from self1.
             if prev != Some(self1) {
                 match_count = 0;
                 matches.clear();
@@ -136,10 +138,12 @@ impl Scanner {
             }
 
             let self_diff = *self2 - *self1;
-            for (other1, other2) in other.beacons.as_slice().unordered_combinations() {
+            for (other1, other2) in other.beacons.unordered_combinations() {
                 let other_diff = *other2 - *other1;
                 if other_diff == self_diff || other_diff == -self_diff {
                     match_count += 1;
+                    // Since we don't know if other1 or other2 is the one matching self1, store both
+                    // along with how often we've seen them.
                     for e in [*other1, *other2] {
                         matches
                             .entry(e)
@@ -149,8 +153,14 @@ impl Scanner {
                 }
             }
 
+            // We need 12 matching beacons, that's 11 beacons + self1. The beacon from other that
+            // matches self1 is the one with the highest count in matches. It should be in there
+            // match_count times, with all other beacons appearing just once.
             if match_count >= 11 {
-                let matching_beacon = matches.iter().max_by_key(|x| x.1).unwrap().0;
+                let (matching_beacon, count) = matches.iter().max_by_key(|x| x.1).unwrap();
+                assert_eq!(match_count, *count);
+                // The offset between that beacon and self1 gives us the relative position of the
+                // other scanner compared to self.
                 return Some(*self1 - *matching_beacon);
             }
         }
@@ -165,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        assert_eq!(0, part1(AocInput::from_sample()));
+        assert_eq!(79, part1(AocInput::from_sample()));
     }
 
     #[test]

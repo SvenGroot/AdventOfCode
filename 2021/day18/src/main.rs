@@ -6,7 +6,7 @@ use aoc::{
     input::AocInput,
     iterator::IntoVec,
     nested_list::{Item, NestedList},
-    slice::SliceCombinator,
+    slice::SliceExt,
 };
 
 fn main() {
