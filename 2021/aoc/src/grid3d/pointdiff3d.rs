@@ -56,7 +56,7 @@ impl PointDiff3D {
     }
 
     pub fn abs(&self) -> Self {
-        Self::new(self.x.abs(), self.y.abs(), self.z.signum())
+        Self::new(self.x.abs(), self.y.abs(), self.z.abs())
     }
 
     pub fn rotate_x(&self) -> Self {
@@ -69,6 +69,11 @@ impl PointDiff3D {
 
     pub fn rotate_z(&self) -> Self {
         Matrix3D::ROTATE_Z * *self
+    }
+
+    pub fn manhattan_distance(&self) -> usize {
+        let abs = self.abs();
+        abs.x as usize + abs.y as usize + abs.z as usize
     }
 }
 

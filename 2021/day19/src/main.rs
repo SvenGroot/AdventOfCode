@@ -5,18 +5,28 @@ use std::collections::{HashMap, HashSet};
 use aoc::{grid3d::PointDiff3D, input::AocInput, slice::SliceExt};
 
 fn main() {
-    println!("Part 1: {}", part1(AocInput::from_input()));
-    println!("Part 2: {}", part2(AocInput::from_input()));
+    let (scanners, beacon_count) = part1(AocInput::from_input());
+    println!("Part 1: {}", beacon_count);
+    println!("Part 2: {}", part2(scanners));
 }
 
-fn part1(input: AocInput) -> usize {
+// Find the overlapping beacons between all scanners, and use it to get the unique positions of all
+// beacons.
+fn part1(input: AocInput) -> (Vec<Scanner>, usize) {
     let mut scanners = Scanner::from_input(input);
     normalize_scanners(&mut scanners);
-    get_all_beacons(&scanners).len()
+    let beacon_count = get_all_beacons(&scanners).len();
+    (scanners, beacon_count)
 }
 
-fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+// Get the largest manhattan distance between two scanners.
+// Reuse the scanner positions calculated in part 1 because part 1 is pretty slow.
+fn part2(beacons: Vec<Scanner>) -> usize {
+    beacons
+        .unordered_combinations()
+        .map(|(first, second)| (second.offset - first.offset).manhattan_distance())
+        .max()
+        .unwrap()
 }
 
 fn normalize_scanners(scanners: &mut [Scanner]) {
@@ -54,6 +64,7 @@ fn get_all_beacons(scanners: &[Scanner]) -> HashSet<PointDiff3D> {
 #[derive(Clone)]
 struct Scanner {
     beacons: Vec<PointDiff3D>,
+    offset: PointDiff3D,
 }
 
 impl Scanner {
@@ -71,13 +82,18 @@ impl Scanner {
             .map(|line| line.parse().unwrap())
             .collect();
 
-        Self { beacons }
+        Self {
+            beacons,
+            offset: PointDiff3D::default(),
+        }
     }
 
     fn mv(&mut self, offset: PointDiff3D) {
         for beacon in &mut self.beacons {
             *beacon += offset;
         }
+
+        self.offset = offset;
     }
 
     fn rotate_x(&mut self) {
@@ -110,10 +126,13 @@ impl Scanner {
                         other.mv(offset);
                         return Some(offset);
                     }
+
                     other.rotate_z()
                 }
+
                 other.rotate_y()
             }
+
             other.rotate_x()
         }
 
@@ -175,12 +194,12 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        assert_eq!(79, part1(AocInput::from_sample()));
+        assert_eq!(79, part1(AocInput::from_sample()).1);
     }
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(3621, part2(part1(AocInput::from_sample()).0));
     }
 
     #[test]
