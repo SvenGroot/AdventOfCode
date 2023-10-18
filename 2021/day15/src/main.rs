@@ -36,7 +36,7 @@ impl CeilingMap {
         let height = self.0.height();
         let up = PointDiff::UP * height as isize;
         let left = PointDiff::LEFT * width as isize;
-        self.0.resize_with(height * 5, width * 5, || 0);
+        self.0.grow_with(height * 5, width * 5, 0);
         for pos in self.0.bounding_rect().points() {
             if pos.row() >= height {
                 self.0[pos] = self.0[pos + up] + 1;

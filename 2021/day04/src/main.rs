@@ -119,7 +119,7 @@ impl BingoBoard {
             }
         }
 
-        return self.0.rows().any(|mut row| row.all(|cell| cell.1))
+        return self.0.rows().any(|row| row.iter().all(|cell| cell.1))
             || self.0.cols().any(|mut col| col.all(|cell| cell.1));
     }
 

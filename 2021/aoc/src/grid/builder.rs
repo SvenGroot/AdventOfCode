@@ -1,3 +1,5 @@
+use ndarray::prelude::*;
+
 use crate::input::AocInput;
 
 use super::Grid;
@@ -77,13 +79,19 @@ where
         }));
 
         if self.extend.is_some() {
-            grid.extend((0..extend_height).map(|_| Vec::new()));
             let max_width = grid.iter().map(|row| row.len()).max().unwrap();
+            grid.extend((0..extend_height).map(|_| Vec::new()));
             for row in &mut grid {
                 row.resize_with(max_width, || (self.transform)(extend_value))
             }
         }
 
-        Grid(grid)
+        let max_width = grid.iter().map(|row| row.len()).max().unwrap();
+        let height = grid.len();
+        Grid(
+            Array::from_iter(grid.into_iter().flat_map(|row| row.into_iter()))
+                .into_shape((height, max_width))
+                .unwrap(),
+        )
     }
 }

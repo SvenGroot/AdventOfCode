@@ -8,21 +8,24 @@ use std::{
     fmt::Display,
     num::NonZeroUsize,
     ops::{Index, IndexMut},
-    slice::{Iter, IterMut},
 };
 
 pub use builder::GridBuilder;
+use ndarray::{
+    iter::{AxisIter, AxisIterMut},
+    prelude::*,
+};
 pub use point::{Line, Neighbors, Point};
 pub use pointdiff::{PointDiff, Rotation};
 pub use rect::{DiffRectangle, Rectangle};
 pub use subgrid::SubGrid;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Grid<T>(Vec<Vec<T>>);
+pub struct Grid<T>(Array2<T>);
 
 impl<T: Clone> Grid<T> {
     pub fn new(height: NonZeroUsize, width: NonZeroUsize, value: T) -> Self {
-        Self(vec![vec![value; width.into()]; height.into()])
+        Self(Array::from_elem((height.get(), width.get()), value))
     }
 
     pub fn from_points(points: Vec<Point>, empty_val: T, set_val: T) -> Self {
@@ -50,15 +53,23 @@ impl<T: Clone> Grid<T> {
             set_val,
         )
     }
+
+    pub fn grow_with(&mut self, height: usize, width: usize, value: T) {
+        assert!(height >= self.height() && width >= self.width());
+        let extra_cols = Array::from_elem((self.height(), width - self.width()), value.clone());
+        self.0.append(Axis(1), extra_cols.view()).unwrap();
+        let extra_rows = Array::from_elem((height - self.height(), width), value);
+        self.0.append(Axis(0), extra_rows.view()).unwrap();
+    }
 }
 
 impl<T> Grid<T> {
     pub fn width(&self) -> usize {
-        self.0[0].len()
+        self.0.ncols()
     }
 
     pub fn height(&self) -> usize {
-        self.0.len()
+        self.0.nrows()
     }
 
     pub fn get(&self, index: Point) -> Option<&T> {
@@ -70,29 +81,24 @@ impl<T> Grid<T> {
     }
 
     pub fn at(&self, row: usize, col: usize) -> Option<&T> {
-        self.0.get(row)?.get(col)
+        self.0.get((row, col))
     }
 
     pub fn at_mut(&mut self, row: usize, col: usize) -> Option<&mut T> {
-        self.0.get_mut(row)?.get_mut(col)
+        self.0.get_mut((row, col))
     }
 
     pub fn map<U>(&self, mut f: impl FnMut(&T) -> U) -> Grid<U> {
-        let grid = self
-            .0
-            .iter()
-            .map(|row| row.iter().map(&mut f).collect())
-            .collect();
-
+        let grid = self.0.map(&mut f);
         Grid(grid)
     }
 
-    pub fn rows(&self) -> impl Iterator<Item = Iter<'_, T>> {
-        self.0.iter().map(|row| row.iter())
+    pub fn rows(&self) -> AxisIter<'_, T, Dim<[usize; 1]>> {
+        self.0.outer_iter()
     }
 
-    pub fn rows_mut(&mut self) -> impl Iterator<Item = IterMut<'_, T>> {
-        self.0.iter_mut().map(|row| row.iter_mut())
+    pub fn rows_mut(&mut self) -> AxisIterMut<'_, T, Dim<[usize; 1]>> {
+        self.0.outer_iter_mut()
     }
 
     pub fn cols(&self) -> impl Iterator<Item = Scan<'_, T>> {
@@ -100,21 +106,18 @@ impl<T> Grid<T> {
     }
 
     pub fn cells(&self) -> impl Iterator<Item = (Point, &T)> {
-        self.0.iter().enumerate().flat_map(|(row, row_vec)| {
-            row_vec
-                .iter()
-                .enumerate()
-                .map(move |(col, cell)| (Point::new(row, col), cell))
-        })
+        self.0
+            .iter()
+            .enumerate()
+            .map(|(index, cell)| (Point::new(index / self.width(), index % self.width()), cell))
     }
 
     pub fn cells_mut(&mut self) -> impl Iterator<Item = (Point, &mut T)> {
-        self.0.iter_mut().enumerate().flat_map(|(row, row_vec)| {
-            row_vec
-                .iter_mut()
-                .enumerate()
-                .map(move |(col, cell)| (Point::new(row, col), cell))
-        })
+        let width = self.width();
+        self.0
+            .iter_mut()
+            .enumerate()
+            .map(move |(index, cell)| (Point::new(index / width, index % width), cell))
     }
 
     pub fn bounding_rect(&self) -> Rectangle {
@@ -222,16 +225,12 @@ impl<T> Grid<T> {
     }
 
     pub fn shrink(&mut self, height: usize, width: usize) {
-        self.0.truncate(height);
-        for row in &mut self.0 {
-            row.truncate(width);
+        while self.0.nrows() > height {
+            self.0.remove_index(Axis(0), self.0.nrows() - 1);
         }
-    }
 
-    pub fn resize_with(&mut self, height: usize, width: usize, mut f: impl FnMut() -> T) {
-        self.0.resize_with(height, || Vec::new());
-        for row in &mut self.0 {
-            row.resize_with(width, &mut f)
+        while self.0.ncols() > width {
+            self.0.remove_index(Axis(1), self.0.ncols() - 1);
         }
     }
 }
@@ -240,19 +239,19 @@ impl<T> Index<Point> for Grid<T> {
     type Output = T;
 
     fn index(&self, index: Point) -> &Self::Output {
-        &self.0[index.row()][index.col()]
+        self.get(index).unwrap()
     }
 }
 
 impl<T> IndexMut<Point> for Grid<T> {
     fn index_mut(&mut self, index: Point) -> &mut Self::Output {
-        &mut self.0[index.row()][index.col()]
+        self.get_mut(index).unwrap()
     }
 }
 
 impl<T: Display> Display for Grid<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for row in &self.0 {
+        for row in self.rows() {
             for cell in row {
                 write!(f, "{}", cell)?;
             }
@@ -267,7 +266,19 @@ impl<T: Display> Display for Grid<T> {
 impl<T> FromIterator<Vec<T>> for Grid<T> {
     fn from_iter<I: IntoIterator<Item = Vec<T>>>(iter: I) -> Self {
         let grid: Vec<Vec<T>> = iter.into_iter().collect();
-        Self(grid)
+        grid.into()
+    }
+}
+
+impl<T> From<Vec<Vec<T>>> for Grid<T> {
+    fn from(value: Vec<Vec<T>>) -> Self {
+        let max_width = value.iter().map(|row| row.len()).max().unwrap();
+        let height = value.len();
+        Grid(
+            Array::from_iter(value.into_iter().flat_map(|row| row.into_iter()))
+                .into_shape((height, max_width))
+                .unwrap(),
+        )
     }
 }
 
@@ -348,8 +359,17 @@ mod tests {
 
         assert_eq!(5, grid.width());
         assert_eq!(3, grid.height());
-        assert_eq!(&[b'1', b'2', b'3', b' ', b' '], grid.0[0].as_slice());
-        assert_eq!(&[b'1', b'2', b'3', b'4', b'5'], grid.0[1].as_slice());
-        assert_eq!(&[b'1', b'2', b' ', b' ', b' '], grid.0[2].as_slice());
+        assert_eq!(
+            &[b'1', b'2', b'3', b' ', b' '],
+            grid.0.slice(s![0, ..]).as_slice().unwrap()
+        );
+        assert_eq!(
+            &[b'1', b'2', b'3', b'4', b'5'],
+            grid.0.slice(s![1, ..]).as_slice().unwrap()
+        );
+        assert_eq!(
+            &[b'1', b'2', b' ', b' ', b' '],
+            grid.0.slice(s![2, ..]).as_slice().unwrap()
+        );
     }
 }
