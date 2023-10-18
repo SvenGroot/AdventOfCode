@@ -6,7 +6,6 @@ mod subgrid;
 
 use std::{
     fmt::Display,
-    num::NonZeroUsize,
     ops::{Index, IndexMut},
 };
 
@@ -24,17 +23,13 @@ pub use subgrid::SubGrid;
 pub struct Grid<T>(Array2<T>);
 
 impl<T: Clone> Grid<T> {
-    pub fn new(height: NonZeroUsize, width: NonZeroUsize, value: T) -> Self {
-        Self(Array::from_elem((height.get(), width.get()), value))
+    pub fn new(height: usize, width: usize, value: T) -> Self {
+        Self(Array::from_elem((height, width), value))
     }
 
     pub fn from_points(points: Vec<Point>, empty_val: T, set_val: T) -> Self {
         let bounding_rect = Rectangle::from_points(points.iter());
-        let mut result = Grid::new(
-            bounding_rect.height().try_into().unwrap(),
-            bounding_rect.width().try_into().unwrap(),
-            empty_val,
-        );
+        let mut result = Grid::new(bounding_rect.height(), bounding_rect.width(), empty_val);
         for pos in &points {
             result[*pos] = set_val.clone();
         }
@@ -125,6 +120,18 @@ impl<T> Grid<T> {
             Point::default(),
             Point::new(self.height() - 1, self.width() - 1),
         )
+    }
+
+    pub fn bounding_rect_where(&self, pred: impl Fn(&T) -> bool) -> Rectangle {
+        Rectangle::from_points(
+            self.cells()
+                .filter_map(|(pos, cell)| pred(cell).then_some(pos)),
+        )
+    }
+
+    pub fn sub_grid_where(&self, pred: impl Fn(&T) -> bool) -> SubGrid<'_, T> {
+        let bounds = self.bounding_rect_where(pred);
+        SubGrid::new(self, bounds)
     }
 
     pub fn edge_cells(&self) -> impl Iterator<Item = (Point, &T)> {
@@ -232,6 +239,13 @@ impl<T> Grid<T> {
         while self.0.ncols() > width {
             self.0.remove_index(Axis(1), self.0.ncols() - 1);
         }
+    }
+
+    pub fn is_on_edge(&self, pos: Point) -> bool {
+        pos.row() == 0
+            || pos.col() == 0
+            || pos.row() == self.height() - 1
+            || pos.col() == self.width() - 1
     }
 }
 

@@ -1,4 +1,4 @@
-use std::num::NonZeroUsize;
+use std::{borrow::Borrow, num::NonZeroUsize};
 
 use super::{Point, PointDiff};
 
@@ -27,10 +27,11 @@ impl Rectangle {
         }
     }
 
-    pub fn from_points<'a>(iter: impl Iterator<Item = &'a Point>) -> Self {
+    pub fn from_points(iter: impl Iterator<Item = impl Borrow<Point>>) -> Self {
         let (top_left, bottom_right) = iter.fold(
             (Point::new(usize::MAX, usize::MAX), Point::default()),
             |(top_left, bottom_right), new| {
+                let new = new.borrow();
                 (
                     Point::new(top_left.row().min(new.row()), top_left.col().min(new.col())),
                     Point::new(

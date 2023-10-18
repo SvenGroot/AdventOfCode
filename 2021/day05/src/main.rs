@@ -42,11 +42,7 @@ impl VentMap {
             )
         });
 
-        let mut grid = Grid::new(
-            (max.row() + 1).try_into().unwrap(),
-            (max.col() + 1).try_into().unwrap(),
-            0,
-        );
+        let mut grid = Grid::new(max.row() + 1, max.col() + 1, 0);
 
         for line in &input {
             let line = line.start.line_to(line.end).unwrap();

@@ -13,6 +13,7 @@ pub struct PointDiff {
 }
 
 impl PointDiff {
+    pub const ZERO: PointDiff = PointDiff::new(0, 0);
     pub const UP: PointDiff = PointDiff::new(-1, 0);
     pub const DOWN: PointDiff = PointDiff::new(1, 0);
     pub const LEFT: PointDiff = PointDiff::new(0, -1);
