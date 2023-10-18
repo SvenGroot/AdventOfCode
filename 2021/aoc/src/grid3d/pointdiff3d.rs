@@ -1,9 +1,10 @@
 use std::{
     num::TryFromIntError,
-    ops::{Add, AddAssign, Sub, SubAssign},
+    ops::{Add, AddAssign, Neg, Sub, SubAssign},
+    str::FromStr,
 };
 
-use super::Point3D;
+use super::{Matrix3D, ParsePointError, Point3D};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Debug)]
 pub struct PointDiff3D {
@@ -56,6 +57,18 @@ impl PointDiff3D {
     pub fn abs(&self) -> Self {
         Self::new(self.x.abs(), self.y.abs(), self.z.signum())
     }
+
+    pub fn rotate_x(&self) -> Self {
+        Matrix3D::ROTATE_X * *self
+    }
+
+    pub fn rotate_y(&self) -> Self {
+        Matrix3D::ROTATE_Y * *self
+    }
+
+    pub fn rotate_z(&self) -> Self {
+        Matrix3D::ROTATE_Z * *self
+    }
 }
 
 impl TryFrom<Point3D> for PointDiff3D {
@@ -66,6 +79,21 @@ impl TryFrom<Point3D> for PointDiff3D {
             x: value.x().try_into()?,
             y: value.y().try_into()?,
             z: value.z().try_into()?,
+        })
+    }
+}
+
+// Parses from "x,y,z" format
+impl FromStr for PointDiff3D {
+    type Err = ParsePointError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (x, y) = s.split_once(',').ok_or(ParsePointError::MissingDelimiter)?;
+        let (y, z) = y.split_once(',').ok_or(ParsePointError::MissingDelimiter)?;
+        Ok(Self {
+            x: x.parse()?,
+            y: y.parse()?,
+            z: z.parse()?,
         })
     }
 }
@@ -107,5 +135,16 @@ impl SubAssign for PointDiff3D {
         self.x -= rhs.x;
         self.y -= rhs.y;
         self.z -= rhs.z;
+    }
+}
+
+impl Neg for PointDiff3D {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        Self::Output {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
     }
 }

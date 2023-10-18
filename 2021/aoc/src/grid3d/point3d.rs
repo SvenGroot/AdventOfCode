@@ -133,7 +133,7 @@ pub enum ParsePointError {
     ParseIntError(#[from] ParseIntError),
 }
 
-// Parses from "y,x" format
+// Parses from "x,y,z" format
 impl FromStr for Point3D {
     type Err = ParsePointError;
 
