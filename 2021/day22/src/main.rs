@@ -1,9 +1,9 @@
 // https://adventofcode.com/2021/day/22
 
-use std::{collections::HashSet, str::FromStr};
+use std::str::FromStr;
 
 use aoc::{
-    grid3d::{DiffCube, PointDiff3D},
+    grid3d::{DiffCuboid, PointDiff3D},
     input::AocInput,
 };
 use text_io::scan;
@@ -14,42 +14,57 @@ fn main() {
 }
 
 // Check how many cubes are on in the initialization region.
-// N.B. I know full well this method won't work for part 2.
 fn part1(input: AocInput) -> usize {
-    let mut cubes = HashSet::new();
-    let init_region = DiffCube::new(
+    process_steps(input, true)
+}
+
+// Check how many cubes are on in all regions.
+fn part2(input: AocInput) -> usize {
+    process_steps(input, false)
+}
+
+fn process_steps(input: AocInput, filter: bool) -> usize {
+    let mut cubes = Vec::new();
+    let init_region = DiffCuboid::new(
         PointDiff3D::new(-50, -50, -50),
         PointDiff3D::new(50, 50, 50),
     );
 
-    for step in input
-        .parsed::<RebootStep>()
-        .filter(|step| init_region.contains_cube(&step.cube))
-    {
-        step.process(&mut cubes);
+    let mut steps: Box<dyn Iterator<Item = RebootStep>> = Box::new(input.parsed::<RebootStep>());
+    if filter {
+        steps = Box::new(steps.filter(|step| init_region.contains_cube(&step.cube)));
     }
 
-    cubes.len()
-}
+    for step in steps {
+        cubes = step.process(cubes);
+        println!(
+            "current: {}, {}",
+            step.on,
+            cubes.iter().map(DiffCuboid::volume).sum::<usize>()
+        )
+    }
 
-fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    cubes.iter().map(DiffCuboid::volume).sum()
 }
 
 struct RebootStep {
     on: bool,
-    cube: DiffCube,
+    cube: DiffCuboid,
 }
 
 impl RebootStep {
-    fn process(&self, cubes: &mut HashSet<PointDiff3D>) {
-        for pos in self.cube.points() {
-            if self.on {
-                cubes.insert(pos);
-            } else {
-                cubes.remove(&pos);
-            }
+    fn process(&self, cubes: Vec<DiffCuboid>) -> Vec<DiffCuboid> {
+        let mut new_cubes = Vec::new();
+        for cube in cubes {
+            let mut split = cube.diff(&self.cube);
+            new_cubes.append(&mut split);
         }
+
+        if self.on {
+            new_cubes.push(self.cube);
+        }
+
+        new_cubes
     }
 }
 
@@ -68,7 +83,7 @@ impl FromStr for RebootStep {
         scan!(right.bytes() => "x={}..{},y={}..{},z={}..{}", min_x, max_x, min_y, max_y, min_z, max_z);
         let top_left_front = PointDiff3D::new(min_x, min_y, min_z);
         let bottom_right_back = PointDiff3D::new(max_x, max_y, max_z);
-        let cube = DiffCube::new(top_left_front, bottom_right_back);
+        let cube = DiffCuboid::new(top_left_front, bottom_right_back);
         Ok(Self { on, cube })
     }
 }
@@ -79,11 +94,11 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        assert_eq!(590784, part1(AocInput::from_sample()));
+        assert_eq!(474140, part1(AocInput::from_sample()));
     }
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(2758514936282235, part2(AocInput::from_sample()));
     }
 }

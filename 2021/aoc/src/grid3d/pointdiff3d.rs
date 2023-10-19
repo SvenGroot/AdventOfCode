@@ -47,6 +47,18 @@ impl PointDiff3D {
         self.z
     }
 
+    pub fn x_mut(&mut self) -> &mut isize {
+        &mut self.x
+    }
+
+    pub fn y_mut(&mut self) -> &mut isize {
+        &mut self.y
+    }
+
+    pub fn z_mut(&mut self) -> &mut isize {
+        &mut self.z
+    }
+
     pub fn into_point(self) -> Option<Point3D> {
         self.try_into().ok()
     }
@@ -101,6 +113,12 @@ impl FromStr for PointDiff3D {
             y: y.parse()?,
             z: z.parse()?,
         })
+    }
+}
+
+impl From<(isize, isize, isize)> for PointDiff3D {
+    fn from(value: (isize, isize, isize)) -> Self {
+        PointDiff3D::new(value.0, value.1, value.2)
     }
 }
 

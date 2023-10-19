@@ -8,7 +8,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-pub use cube::DiffCube;
+pub use cube::{DiffCuboid, SplitAlign};
 pub use matrix::Matrix3D;
 pub use point3d::{Line, Neighbors3D, ParsePointError, Point3D};
 pub use pointdiff3d::PointDiff3D;
