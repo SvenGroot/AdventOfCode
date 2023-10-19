@@ -4,7 +4,7 @@ use std::{iter::Sum, ops::Add, str::FromStr};
 
 use aoc::{
     input::AocInput,
-    iterator::IntoVec,
+    iterator::IteratorExt,
     nested_list::{Item, NestedList},
     slice::SliceExt,
 };

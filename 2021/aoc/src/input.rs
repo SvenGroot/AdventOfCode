@@ -8,7 +8,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::iterator::IntoVec;
+use crate::iterator::IteratorExt;
 
 pub type FileInput = Map<Lines<BufReader<File>>, fn(std::io::Result<String>) -> String>;
 

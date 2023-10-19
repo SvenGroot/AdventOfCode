@@ -5,7 +5,7 @@ use std::str::FromStr;
 use aoc::{
     grid::{Grid, Point},
     input::AocInput,
-    iterator::IntoVec,
+    iterator::IteratorExt,
 };
 
 fn main() {

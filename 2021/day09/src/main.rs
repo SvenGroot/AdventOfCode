@@ -3,7 +3,7 @@
 use aoc::{
     grid::{Grid, GridBuilder, Point},
     input::AocInput,
-    iterator::IntoVec,
+    iterator::IteratorExt,
 };
 
 fn main() {

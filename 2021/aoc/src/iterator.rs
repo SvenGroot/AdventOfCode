@@ -1,29 +1,37 @@
 use std::iter::Peekable;
 
-pub struct InfiniteRepeat<'a, T> {
-    items: &'a [T],
-    index: usize,
+pub struct InfiniteRepeat<I: Iterator + Clone> {
+    source: I,
+    current: I,
 }
 
-impl<'a, T> Iterator for InfiniteRepeat<'a, T> {
-    type Item = &'a T;
+impl<I: Iterator + Clone> Iterator for InfiniteRepeat<I> {
+    type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let result = self.items.get(self.index)?;
-        self.index = (self.index + 1) % self.items.len();
-        Some(result)
+        let mut result = self.current.next();
+        if result.is_none() {
+            self.current = self.source.clone();
+            result = self.current.next();
+        }
+
+        result
     }
 }
 
-impl<'a, T> InfiniteRepeat<'a, T> {
-    pub fn index(&self) -> usize {
-        self.index
+pub trait InfiniteRepeatExt
+where
+    Self: Iterator + Clone,
+{
+    fn infinite_repeat(self) -> InfiniteRepeat<Self> {
+        InfiniteRepeat {
+            source: self.clone(),
+            current: self,
+        }
     }
 }
 
-pub fn infinite_repeat<T>(items: &[T]) -> InfiniteRepeat<T> {
-    InfiniteRepeat { items, index: 0 }
-}
+impl<T: Iterator + Clone> InfiniteRepeatExt for T {}
 
 pub struct TakeWhilePeek<'a, I: Iterator, P> {
     peekable: &'a mut Peekable<I>,
@@ -70,7 +78,7 @@ impl<I: Iterator> PeekableExt<I> for Peekable<I> {
     }
 }
 
-pub trait IntoVec
+pub trait IteratorExt
 where
     Self: Iterator + Sized,
 {
@@ -79,4 +87,4 @@ where
     }
 }
 
-impl<T: Iterator> IntoVec for T {}
+impl<T: Iterator> IteratorExt for T {}
