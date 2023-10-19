@@ -93,6 +93,11 @@ impl DiffCube {
             && point.z() <= self.bottom_right_back.z()
     }
 
+    /// Wholly contains the other cube.
+    pub fn contains_cube(&self, other: &DiffCube) -> bool {
+        self.contains(other.top_left_front()) && self.contains(other.bottom_right_back())
+    }
+
     pub fn points(&self) -> impl Iterator<Item = PointDiff3D> + '_ {
         (self.top_left_front.x()..=self.bottom_right_back.x()).flat_map(move |x| {
             (self.top_left_front.y()..=self.bottom_right_back.y()).flat_map(move |y| {
