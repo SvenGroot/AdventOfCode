@@ -11,7 +11,6 @@ fn main() {
 
 fn part1(input: AocInput) -> usize {
     let burrow = Burrow::from_input(input);
-    println!("{burrow}");
     burrow.do_move()
 }
 
@@ -22,7 +21,6 @@ fn part2(input: AocInput) -> usize {
 #[derive(Default, Clone)]
 struct Burrow {
     amphipods: [Amphipod; 8],
-    energy_used: usize,
 }
 
 impl Burrow {
@@ -50,7 +48,6 @@ impl Burrow {
 
         Self {
             amphipods: amphipods.try_into().unwrap(),
-            energy_used: 0,
         }
     }
 
@@ -71,20 +68,16 @@ impl Burrow {
     }
 
     fn do_move(self) -> usize {
-        let mut min_energy = usize::MAX;
+        // println!("Move:");
+        // println!("{self}");
+        let mut min_energy: usize = usize::MAX;
         let mut has_move = false;
         let mut final_count = 0;
         // Check if any amphipod can move to its final destination. If so, that is the move we do.
         for (index, a) in self.amphipods.iter().enumerate() {
             if !a.is_final(&self) {
                 if let Some(pos) = self.room_available(a.target_room()) {
-                    if let Some(energy) = self.path_free(&a.pos, &pos) {
-                        let mut next = self.clone();
-                        next.amphipods[index].pos = pos;
-                        let move_energy = a.energy_use() * energy;
-                        min_energy = min_energy.min(move_energy + next.do_move());
-                        has_move = true;
-                    }
+                    has_move |= self.do_next_move(pos, index, &mut min_energy);
                 }
             } else {
                 final_count += 1;
@@ -99,7 +92,12 @@ impl Burrow {
         }
 
         // Otherwise, try all moves where an arthropod moves into the hallway.
-        for (index, a) in self.amphipods.iter().enumerate() {
+        for (index, a) in self
+            .amphipods
+            .iter()
+            .enumerate()
+            .filter(|(_, a)| !a.is_final(&self))
+        {
             if let AmphipodPos::Room(room, pos) = a.pos {
                 if pos == 1 && !self.pos_free(&AmphipodPos::Room(room, 0)) {
                     continue;
@@ -108,18 +106,31 @@ impl Burrow {
                 for i in [0, 1, 3, 5, 7, 9, 10] {
                     let dest = AmphipodPos::Hallway(i);
                     if self.pos_free(&dest) {
-                        if let Some(energy) = self.path_free(&a.pos, &dest) {
-                            let mut next = self.clone();
-                            next.amphipods[index].pos = dest;
-                            let move_energy = a.energy_use() * energy;
-                            min_energy = min_energy.min(move_energy + next.do_move());
-                        }
+                        self.do_next_move(dest, index, &mut min_energy);
                     }
                 }
             }
         }
 
         min_energy
+    }
+
+    fn do_next_move(&self, pos: AmphipodPos, index: usize, min_energy: &mut usize) -> bool {
+        let a = &self.amphipods[index];
+        if let Some(energy) = self.path_free(&a.pos, &pos) {
+            let mut next = self.clone();
+            next.amphipods[index].pos = pos;
+            let move_energy = a.energy_use() * energy;
+            // println!("{move_energy}");
+            let next_energy = next.do_move();
+            if next_energy != usize::MAX {
+                *min_energy = (*min_energy).min(move_energy + next_energy);
+            }
+
+            true
+        } else {
+            false
+        }
     }
 
     fn room_available(&self, room: u8) -> Option<AmphipodPos> {
@@ -151,9 +162,11 @@ impl Burrow {
         let from = match from {
             AmphipodPos::Room(room, pos) => {
                 energy += 1;
-                if *pos == 1 && !self.pos_free(&AmphipodPos::Room(*room, 0)) {
+                if *pos == 1 {
                     energy += 1;
-                    return None;
+                    if !self.pos_free(&AmphipodPos::Room(*room, 0)) {
+                        return None;
+                    }
                 }
 
                 room * 2 + 2
@@ -164,9 +177,11 @@ impl Burrow {
         let to = match to {
             AmphipodPos::Room(room, pos) => {
                 energy += 1;
-                if *pos == 1 && !self.pos_free(&AmphipodPos::Room(*room, 0)) {
+                if *pos == 1 {
                     energy += 1;
-                    return None;
+                    if !self.pos_free(&AmphipodPos::Room(*room, 0)) {
+                        return None;
+                    }
                 }
 
                 room * 2 + 2
@@ -233,12 +248,13 @@ impl Amphipod {
 
     fn is_final(&self, burrow: &Burrow) -> bool {
         if let AmphipodPos::Room(room, pos) = self.pos {
-            room == self.target_room() && pos == 1
-                || burrow
-                    .get_pos(&AmphipodPos::Room(room, 1))
-                    .unwrap()
-                    .target_room()
-                    == room
+            room == self.target_room()
+                && (pos == 1
+                    || burrow
+                        .get_pos(&AmphipodPos::Room(room, 1))
+                        .unwrap()
+                        .target_room()
+                        == room)
         } else {
             false
         }
@@ -273,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        assert_eq!(0, part1(AocInput::from_sample()));
+        assert_eq!(12521, part1(AocInput::from_sample()));
     }
 
     #[test]
