@@ -2,51 +2,106 @@
 
 use std::{fmt::Display, str::FromStr};
 
-use aoc::input::AocInput;
+use aoc::{input::AocInput, iterator::IteratorExt, slice::SliceExt};
 
 fn main() {
     println!("Part 1: {}", part1(AocInput::from_input()));
     println!("Part 2: {}", part2(AocInput::from_input()));
 }
 
-fn part1(input: AocInput) -> usize {
+// Find the largest accepted code.
+fn part1(input: AocInput) -> isize {
+    find_code(input, false)
+}
+
+// Find the smallest accepted code.
+fn part2(input: AocInput) -> isize {
+    find_code(input, true)
+}
+
+fn find_code(input: AocInput, smallest: bool) -> isize {
     let program = Alu::load_program(input);
-    //let mut input = [1, 3, 5, 7, 9, 2, 4, 6, 8, 9, 9, 7, 8, 9];
-    let mut input = [1; 14];
-    for _ in 0..1 {
-        let mut alu = Alu::default();
-        alu.run(program.iter(), input.iter().copied());
-        if alu.registers[3] == 0 {
-            println!("{input:?}: valid");
+
+    // The program is a bunch of repeated blocks, that differ only by a few parameters.
+    // The blocks fall into two kinds:
+    // 1. z = (z * 26) + digit + number
+    //    This is unconditional because the test value is always too high to match the digit. The
+    //    number differs per block.
+    // 2. if digit == (z % 26) - number { z /= 26 } else { z += w + number }
+    //    We never want to take the else path.
+    let blocks = program
+        .split_inclusive_start(Instruction::is_input)
+        .into_vec();
+
+    // Each kind 1 block pairs up with a kind 2 block that undoes it (they are equal in count).
+    // Find the matching pairs.
+    let mut pairs = Vec::new();
+    let mut stack = Vec::new();
+    for (index, block) in blocks.iter().enumerate() {
+        if block.contains(&Instruction::Operation(
+            Operation::Divide,
+            Register(3),
+            Operand::Value(26),
+        )) {
+            let pair_index = stack.pop().unwrap();
+            pairs.push((pair_index, index));
         } else {
-            println!("{input:?}: invalid {:b}", alu.registers[3]);
-        }
-
-        for i in input.iter_mut().rev() {
-            *i += 1;
-            if *i != 10 {
-                break;
-            }
-
-            *i = 1;
+            stack.push(index);
         }
     }
 
-    0
+    // We can consider each pair in isolation. Z must be unchanged after running both blocks in the
+    // pair. Find either the highest or lowest set of digits that achieve that.
+    let mut digits = [0; 14];
+    for (first, second) in pairs.iter() {
+        let mut input = if smallest { [1, 1] } else { [9, 9] };
+        loop {
+            let mut input_iter = input.iter().copied();
+            let mut alu = Alu::default();
+            alu.run(blocks[*first].iter(), &mut input_iter);
+            alu.run(blocks[*second].iter(), &mut input_iter);
 
-    // let mut result = 0;
-    // for (index, value) in input.iter().rev().enumerate() {
-    //     result += *value as usize * 10usize.pow(index as u32)
-    // }
+            if alu.registers[3] == 0 {
+                digits[*first] = input[0];
+                digits[*second] = input[1];
+                break;
+            }
 
-    // result
+            if smallest {
+                assert_ne!([9, 9], input);
+                for i in input.iter_mut().rev() {
+                    *i += 1;
+                    if *i != 10 {
+                        break;
+                    }
+
+                    *i = 1;
+                }
+            } else {
+                assert_ne!([1, 1], input);
+                for i in input.iter_mut().rev() {
+                    *i -= 1;
+                    if *i != 0 {
+                        break;
+                    }
+
+                    *i = 9;
+                }
+            }
+        }
+    }
+
+    // Convert the digits array to a number.
+    digits
+        .iter()
+        .rev()
+        .enumerate()
+        .fold(0, |current, (index, new)| {
+            current + *new * 10isize.pow(index as u32)
+        })
 }
 
-fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
-}
-
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct Alu {
     registers: [isize; 4],
 }
@@ -67,6 +122,7 @@ impl Alu {
     }
 }
 
+#[derive(PartialEq, Eq)]
 enum Instruction {
     Input(Register),
     Operation(Operation, Register, Operand),
@@ -77,7 +133,6 @@ impl Instruction {
         match self {
             Instruction::Input(reg) => {
                 let value = input.next().unwrap();
-                println!("inp {reg} [{value}]");
                 reg.set(value, alu);
             }
             Instruction::Operation(op, reg, operand) => {
@@ -91,11 +146,13 @@ impl Instruction {
                     Operation::Equals => (value1 == value2).into(),
                 };
 
-                println!("{op} {reg} {operand} [{result} <- {value1} {value2}]");
-
                 reg.set(result, alu);
             }
         }
+    }
+
+    fn is_input(&self) -> bool {
+        matches!(self, Instruction::Input(_))
     }
 }
 
@@ -124,6 +181,16 @@ impl FromStr for Instruction {
     }
 }
 
+impl Display for Instruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Instruction::Input(reg) => write!(f, "inp {reg}"),
+            Instruction::Operation(op, reg, operand) => write!(f, "{op} {reg} {operand}"),
+        }
+    }
+}
+
+#[derive(PartialEq, Eq)]
 struct Register(usize);
 
 impl Register {
@@ -151,6 +218,7 @@ impl Display for Register {
     }
 }
 
+#[derive(PartialEq, Eq)]
 enum Operation {
     Add,
     Multiply,
@@ -173,6 +241,7 @@ impl Display for Operation {
     }
 }
 
+#[derive(PartialEq, Eq)]
 enum Operand {
     Register(Register),
     Value(isize),
@@ -210,16 +279,6 @@ impl FromStr for Operand {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_part1() {
-        assert_eq!(0, part1(AocInput::from_sample()));
-    }
-
-    #[test]
-    fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
-    }
 
     #[test]
     fn test_alu() {

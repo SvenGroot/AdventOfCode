@@ -17,6 +17,9 @@ add y 6
 mul y x
 add z y
 
+z += w + 6
+max = 17
+
 inp w
 mul x 0
 add x z
@@ -35,6 +38,9 @@ add y w
 add y 12 // different
 mul y x
 add z y
+
+z += w + 12
+max = 38
 
 inp w
 mul x 0
@@ -151,11 +157,11 @@ mul y x
 add z y
 
 inp w
-mul x 0
-add x z
-mod x 26
-div z 1
-add x 15
+mul x 0; x = 0
+add x z; x = z
+mod x 26; x = z % 26
+div z 1; z /= 1
+add x 15; x += 15
 eql x w
 eql x 0
 mul y 0
@@ -168,6 +174,10 @@ add y w
 add y 14
 mul y x
 add z y
+
+8199662
+
+z = (z * 26) + w + 14
 
 inp w
 mul x 0
@@ -188,6 +198,15 @@ add y 13
 mul y x
 add z y
 
+9,8199662
+
+x = z % 26
+if w == x - 7 {
+    z /= 26
+} else {
+    z += w + 9
+}
+
 inp w
 mul x 0
 add x z
@@ -206,6 +225,16 @@ add y w
 add y 10
 mul y x
 add z y
+
+9,315354
+
+x = z % 26
+if w == x - 8 {
+    z /= 26
+} else {
+    z += w + 10
+}
+
 
 inp w
 mul x 0
@@ -226,6 +255,16 @@ add y 11
 mul y x
 add z y
 
+9,12129
+
+x = z % 26
+if w == x - 4 {
+    z /= 26
+} else {
+    z += w + 11
+}
+
+
 inp w
 mul x 0
 add x z
@@ -245,6 +284,15 @@ add y 9
 mul y x
 add z y
 
+9,466
+
+x = z % 26
+if w == x - 15 {
+    z /= 26
+} else {
+    z += w + 9
+}
+
 inp w
 mul x 0
 add x z
@@ -258,8 +306,17 @@ add y 25
 mul y x
 add y 1
 mul z y
-mul y 0
+mul y 0 
 add y w
 add y 9
 mul y x
 add z y
+
+9,17
+
+x = z % 26
+if w == x - 8 {
+    z /= 26
+} else {
+    z += w + 9
+}

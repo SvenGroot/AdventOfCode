@@ -41,6 +41,35 @@ impl<'a, T> Iterator for SliceCombinations<'a, T> {
     }
 }
 
+pub struct SplitInclusiveStart<'a, T, P: FnMut(&T) -> bool> {
+    source: &'a [T],
+    current: usize,
+    pred: P,
+}
+
+impl<'a, T, P: FnMut(&T) -> bool> Iterator for SplitInclusiveStart<'a, T, P> {
+    type Item = &'a [T];
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current >= self.source.len() {
+            return None;
+        }
+
+        if let Some(index) = self.source[self.current + 1..]
+            .iter()
+            .position(&mut self.pred)
+        {
+            let start = self.current;
+            self.current += index + 1;
+            Some(&self.source[start..self.current])
+        } else {
+            let start = self.current;
+            self.current = self.source.len();
+            Some(&self.source[start..])
+        }
+    }
+}
+
 pub trait SliceExt<T> {
     /// Returns all permutations of two distinct items in a slice.
     ///
@@ -53,6 +82,8 @@ pub trait SliceExt<T> {
     fn combinations(&self) -> SliceCombinations<'_, T>;
 
     fn get_two_mut(&mut self, index1: usize, index2: usize) -> (&mut T, &mut T);
+
+    fn split_inclusive_start<P: FnMut(&T) -> bool>(&self, pred: P) -> SplitInclusiveStart<T, P>;
 }
 
 impl<T> SliceExt<T> for [T] {
@@ -74,6 +105,15 @@ impl<T> SliceExt<T> for [T] {
             (first, second)
         } else {
             (second, first)
+        }
+    }
+
+    /// Splits a slice, including the separator at the start of the subslices.
+    fn split_inclusive_start<P: FnMut(&T) -> bool>(&self, pred: P) -> SplitInclusiveStart<T, P> {
+        SplitInclusiveStart {
+            source: self,
+            current: 0,
+            pred,
         }
     }
 }
