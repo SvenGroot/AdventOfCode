@@ -26,7 +26,7 @@ fn part2(input: AocInput) -> usize {
     let numbers = input.parsed::<SnailfishNumber>().into_vec();
     numbers
         .as_slice()
-        .combinations()
+        .permutations()
         .map(|(first, second)| (first.clone() + second.clone()).magnitude())
         .max()
         .unwrap()

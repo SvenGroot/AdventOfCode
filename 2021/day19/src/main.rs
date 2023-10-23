@@ -23,7 +23,7 @@ fn part1(input: AocInput) -> (Vec<Scanner>, usize) {
 // Reuse the scanner positions calculated in part 1 because part 1 is pretty slow.
 fn part2(beacons: Vec<Scanner>) -> usize {
     beacons
-        .unordered_combinations()
+        .combinations()
         .map(|(first, second)| (second.offset - first.offset).manhattan_distance())
         .max()
         .unwrap()
@@ -147,7 +147,7 @@ impl Scanner {
         // To check if there's a match, we need to see if there are twelve beacons whose relative
         // positions are the same. To do this, we check every combination of beacons from self
         // against every combination of beacons from other.
-        for (self1, self2) in self.beacons.unordered_combinations() {
+        for (self1, self2) in self.beacons.combinations() {
             // self1 will only change if all values of self2 have been processed. Use this to check
             // if we found enough matches from self1.
             if prev != Some(self1) {
@@ -157,7 +157,7 @@ impl Scanner {
             }
 
             let self_diff = *self2 - *self1;
-            for (other1, other2) in other.beacons.unordered_combinations() {
+            for (other1, other2) in other.beacons.combinations() {
                 let other_diff = *other2 - *other1;
                 if other_diff == self_diff || other_diff == -self_diff {
                     match_count += 1;

@@ -42,26 +42,25 @@ impl<'a, T> Iterator for SliceCombinations<'a, T> {
 }
 
 pub trait SliceExt<T> {
-    /// Returns all combinations of two distinct items in a slice.
+    /// Returns all permutations of two distinct items in a slice.
     ///
     /// Does not return (a, a), and will return both (a, b) and (b, a).
-    fn combinations(&self) -> SliceCombinations<'_, T>;
+    fn permutations(&self) -> SliceCombinations<'_, T>;
 
-    /// Returns all combinations of two distinct items in a slice, when the order of items in the
-    /// pair does not matter.
+    /// Returns all combinations of two distinct items in a slice.
     ///
     /// Does not return (a, a), and if (a, b) is returned, (b, a) will not be.
-    fn unordered_combinations(&self) -> SliceCombinations<'_, T>;
+    fn combinations(&self) -> SliceCombinations<'_, T>;
 
     fn get_two_mut(&mut self, index1: usize, index2: usize) -> (&mut T, &mut T);
 }
 
 impl<T> SliceExt<T> for [T] {
-    fn combinations(&self) -> SliceCombinations<'_, T> {
+    fn permutations(&self) -> SliceCombinations<'_, T> {
         SliceCombinations::new(self, true)
     }
 
-    fn unordered_combinations(&self) -> SliceCombinations<'_, T> {
+    fn combinations(&self) -> SliceCombinations<'_, T> {
         SliceCombinations::new(self, false)
     }
 
