@@ -22,10 +22,10 @@ even though this kind of algorithmic stuff isn't something I often deal with in 
 
 ## Least favorite: [Day 22](../day22)
 
-It just very tough to come up with a way to handle the folding,
-and I wasn't a fan of the fact that doing it generically was both unnecessary (since everyone's
-input was the same shape; not that you'd know without checking Reddit), and would've been much
-harder than just hardcoding the cube transformations.
+It was just very tough to come up with a way to handle the folding, and I wasn't a fan of the fact
+that doing it generically was both unnecessary (since everyone's input was the same shape; not that
+you'd know without checking Reddit), and would've been much harder than just hardcoding the cube
+transformations.
 
 It should be said, however, that I did the later puzzles so long after the first batch that I don't
 have a good recollection of how much I enjoyed the earlier ones or not, so these picks should be

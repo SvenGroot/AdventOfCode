@@ -183,6 +183,10 @@ impl<T> Grid<T> {
         (result.row() < self.height() && result.col() < self.width()).then_some(result)
     }
 
+    pub fn add_point_wrapped(&self, point: Point, diff: PointDiff) -> Point {
+        point.add_diff_wrapped(diff, self.height(), self.width())
+    }
+
     pub fn find_in_row(&self, row: usize, predicate: impl FnMut(&T) -> bool) -> Option<Point> {
         let col = self
             .scan(Point::new(row, 0), PointDiff::RIGHT)
@@ -246,6 +250,22 @@ impl<T> Grid<T> {
             || pos.col() == 0
             || pos.row() == self.height() - 1
             || pos.col() == self.width() - 1
+    }
+
+    pub fn write_mapped<U: Display>(
+        &self,
+        f: &mut std::fmt::Formatter<'_>,
+        map: impl Fn(&T) -> U,
+    ) -> std::fmt::Result {
+        for row in self.rows() {
+            for cell in row {
+                write!(f, "{}", map(cell))?;
+            }
+
+            writeln!(f)?;
+        }
+
+        Ok(())
     }
 }
 

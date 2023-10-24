@@ -38,6 +38,13 @@ impl Point {
         })
     }
 
+    pub fn add_diff_wrapped(&self, diff: PointDiff, max_row: usize, max_col: usize) -> Self {
+        Self {
+            row: self.row.wrapping_add_signed(diff.row()) % max_row,
+            col: self.col.wrapping_add_signed(diff.col()) % max_col,
+        }
+    }
+
     pub fn diff(&self, other: Point) -> Option<PointDiff> {
         Some(self.into_diff()? - other.into_diff()?)
     }
