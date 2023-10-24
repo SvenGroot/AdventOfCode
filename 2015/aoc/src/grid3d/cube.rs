@@ -85,6 +85,16 @@ impl DiffCuboid {
         (self.bottom_right_back.z() - self.top_left_front.z() + 1) as usize
     }
 
+    pub fn surface_area(&self) -> usize {
+        2 * self.depth() * self.width()
+            + 2 * self.width() * self.height()
+            + 2 * self.height() * self.depth()
+    }
+
+    pub fn volume(&self) -> usize {
+        self.width() * self.height() * self.depth()
+    }
+
     pub fn contains(&self, point: PointDiff3D) -> bool {
         self.top_left_front.x() <= point.x()
             && self.top_left_front.y() <= point.y()
@@ -227,10 +237,6 @@ impl DiffCuboid {
         }
 
         result
-    }
-
-    pub fn volume(&self) -> usize {
-        self.width() * self.height() * self.depth()
     }
 }
 
