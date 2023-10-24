@@ -33,4 +33,6 @@ Get-Content "$source/Cargo.toml" | ForEach-Object {
     }
 } | Set-Content "$target/Cargo.toml"
 
+"# Advent of Code $NewYear","","[Event homepage](https://adventofcode.com/$NewYear)" | Set-Content "$target/README.md"
+
 "Created year $NewYear, use New-Day.ps1 to create a day"
