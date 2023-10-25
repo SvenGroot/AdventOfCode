@@ -39,35 +39,21 @@ impl PointDiff {
         Self { row, col }
     }
 
-    pub fn from_char(input: u8, up: u8, right: u8, down: u8, left: u8) -> Option<Self> {
-        if input == up {
-            Some(PointDiff::UP)
-        } else if input == right {
-            Some(PointDiff::RIGHT)
-        } else if input == down {
-            Some(PointDiff::DOWN)
-        } else if input == left {
-            Some(PointDiff::LEFT)
-        } else {
-            None
-        }
+    /// Parses into one of four directions listed in `dirs`, in the order \[up, right, down, left].
+    pub fn from_char(input: u8, dirs: [u8; 4]) -> Option<Self> {
+        let index = dirs.iter().position(|dir| *dir == input)?;
+        Some(Self::STRAIGHT_NEIGHBORS[index])
+    }
+
+    pub fn from_arrows(input: u8) -> Option<Self> {
+        Self::from_char(input, [b'^', b'>', b'v', b'<'])
     }
 
     /// Parses into one of four directions listed in `dirs`, in the order \[up, right, down, left].
     pub fn from_str(input: impl AsRef<str>, dirs: [&str; 4]) -> Option<Self> {
-        let [up, right, down, left] = dirs;
         let input = input.as_ref();
-        if input == up {
-            Some(PointDiff::UP)
-        } else if input == right {
-            Some(PointDiff::RIGHT)
-        } else if input == down {
-            Some(PointDiff::DOWN)
-        } else if input == left {
-            Some(PointDiff::LEFT)
-        } else {
-            None
-        }
+        let index = dirs.iter().position(|dir| *dir == input)?;
+        Some(Self::STRAIGHT_NEIGHBORS[index])
     }
 
     pub fn row(&self) -> isize {
