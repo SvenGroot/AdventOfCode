@@ -1,5 +1,7 @@
 // https://adventofcode.com/2015/day/5
 
+use std::str::from_utf8;
+
 use aoc::input::AocInput;
 
 fn main() {
@@ -12,8 +14,9 @@ fn part1(input: AocInput) -> usize {
     input.filter(|s| is_nice(s)).count()
 }
 
+// Determine how many strings are nice using the new rules.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    input.filter(|s| is_nice_v2(s)).count()
 }
 
 fn is_nice(s: &str) -> bool {
@@ -36,6 +39,34 @@ fn is_nice(s: &str) -> bool {
     has_double
 }
 
+fn is_nice_v2(s: &str) -> bool {
+    let has_repeated_pair = s.as_bytes().windows(2).enumerate().any(|(index, window)| {
+        let mut offset = 0;
+        let pattern = from_utf8(window).unwrap();
+        loop {
+            if let Some(i) = s[offset..].find(pattern) {
+                let i = offset + i;
+                // Check for overlap.
+                if i + 1 == index || i == index || i == index + 1 {
+                    offset = i + 1;
+                } else {
+                    break true;
+                }
+            } else {
+                break false;
+            }
+        }
+    });
+
+    if !has_repeated_pair {
+        return false;
+    }
+
+    s.as_bytes()
+        .windows(3)
+        .any(|window| window[0] != window[1] && window[0] == window[2])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -51,6 +82,10 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert!(is_nice_v2("qjhvhtzxzqqjkmpb"));
+        assert!(is_nice_v2("xxyxx"));
+        assert!(!is_nice_v2("aaaba"));
+        assert!(!is_nice_v2("uurcxstgmygtbstg"));
+        assert!(!is_nice_v2("ieodomkazucvgmuy"));
     }
 }
