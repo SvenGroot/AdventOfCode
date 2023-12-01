@@ -78,9 +78,7 @@ impl AocInput {
     pub fn into_vec(self) -> Vec<String> {
         self.0.into_vec()
     }
-}
 
-impl AocInput {
     /// Parses the input as the specified type, panicking if anything is invalid.
     pub fn parsed<T: FromStr>(self) -> impl Iterator<Item = T>
     where
