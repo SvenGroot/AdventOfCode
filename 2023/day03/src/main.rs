@@ -1,6 +1,11 @@
 // https://adventofcode.com/2023/day/3
 
-use aoc::{grid::GridBuilder, input::AocInput};
+use std::collections::{HashMap, HashSet};
+
+use aoc::{
+    grid::{GridBuilder, Point},
+    input::AocInput,
+};
 
 fn main() {
     println!("Part 1: {}", part1(AocInput::from_input()));
@@ -42,8 +47,50 @@ fn part1(input: AocInput) -> usize {
     sum
 }
 
+// Find all * symbols adjacent to exactly two numbers, multiply those two numbers together, sum
+// them.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let engine = GridBuilder::from_input(input).build();
+    let mut current_symbols = HashSet::new();
+    let mut gear_symbols: HashMap<Point, Vec<usize>> = HashMap::new();
+    for (row, values) in engine.rows().enumerate() {
+        let mut current_number: usize = 0;
+        current_symbols.clear();
+        for (col, value) in values.iter().enumerate() {
+            if value.is_ascii_digit() {
+                current_number *= 10;
+                current_number += (value - b'0') as usize;
+                for nb in engine.all_neighbors((row, col).into()) {
+                    if engine[nb] == b'*' {
+                        current_symbols.insert(nb);
+                    }
+                }
+            } else {
+                for symbol in &current_symbols {
+                    gear_symbols
+                        .entry(*symbol)
+                        .and_modify(|v| v.push(current_number))
+                        .or_insert_with(|| vec![current_number]);
+                }
+
+                current_number = 0;
+                current_symbols.clear();
+            }
+        }
+
+        for symbol in &current_symbols {
+            gear_symbols
+                .entry(*symbol)
+                .and_modify(|v| v.push(current_number))
+                .or_insert_with(|| vec![current_number]);
+        }
+    }
+
+    gear_symbols
+        .iter()
+        .filter(|(_, numbers)| (numbers.len() == 2))
+        .map(|(_, numbers)| numbers[0] * numbers[1])
+        .sum()
 }
 
 #[cfg(test)]
@@ -57,6 +104,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(467835, part2(AocInput::from_sample()));
     }
 }
