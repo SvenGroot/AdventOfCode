@@ -24,8 +24,13 @@ fn part1(input: AocInput) -> usize {
         .sum()
 }
 
+// Determine the smallest possible bag for each game, get the power of each bag (multiply color
+// values), and sum those powers.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    input
+        .parsed::<Game>()
+        .map(|game| game.smallest_bag().power())
+        .sum()
 }
 
 struct Game {
@@ -38,6 +43,16 @@ impl Game {
         self.grabs
             .iter()
             .all(|grab| grab.red <= bag.red && grab.blue <= bag.blue && grab.green <= bag.green)
+    }
+
+    fn smallest_bag(&self) -> CubeSet {
+        self.grabs
+            .iter()
+            .fold(CubeSet::default(), |current, grab| CubeSet {
+                red: current.red.max(grab.red),
+                blue: current.blue.max(grab.blue),
+                green: current.green.max(grab.green),
+            })
     }
 }
 
@@ -62,6 +77,12 @@ struct CubeSet {
     red: usize,
     blue: usize,
     green: usize,
+}
+
+impl CubeSet {
+    fn power(&self) -> usize {
+        self.red * self.blue * self.green
+    }
 }
 
 impl FromStr for CubeSet {
@@ -95,6 +116,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(2286, part2(AocInput::from_sample()));
     }
 }
