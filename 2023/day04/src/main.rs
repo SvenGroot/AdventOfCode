@@ -2,7 +2,7 @@
 
 use std::str::FromStr;
 
-use aoc::input::AocInput;
+use aoc::{input::AocInput, iterator::IteratorExt};
 
 fn main() {
     println!("Part 1: {}", part1(AocInput::from_input()));
@@ -14,8 +14,30 @@ fn part1(input: AocInput) -> usize {
     input.parsed::<Card>().map(|c| c.points()).sum()
 }
 
+// For all matches on a card, duplicate the following cards. Then count the total number of cards.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let mut stacks = input
+        .parsed::<Card>()
+        .map(|card| CardStack { card, count: 1 })
+        .into_vec();
+
+    for i in 0..stacks.len() {
+        let stack = &stacks[i];
+        let matches = stack.card.matches();
+
+        // Each duplicate is processed the same, so that's the number of copies we're generating.
+        let count = stack.count;
+        for m in 1..=matches {
+            stacks[i + m].count += count;
+        }
+    }
+
+    stacks.iter().map(|stack| stack.count).sum()
+}
+
+struct CardStack {
+    card: Card,
+    count: usize,
 }
 
 struct Card {
@@ -25,17 +47,19 @@ struct Card {
 
 impl Card {
     fn points(&self) -> usize {
-        let matches = self
-            .numbers
-            .iter()
-            .filter(|&n| self.winning_numbers.contains(n))
-            .count();
-
+        let matches = self.matches();
         if matches == 0 {
             0
         } else {
             2usize.pow((matches - 1) as u32)
         }
+    }
+
+    fn matches(&self) -> usize {
+        self.numbers
+            .iter()
+            .filter(|&n| self.winning_numbers.contains(n))
+            .count()
     }
 }
 
@@ -75,6 +99,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(30, part2(AocInput::from_sample()));
     }
 }
