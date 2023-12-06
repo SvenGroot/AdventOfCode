@@ -13,8 +13,10 @@ fn part1(input: AocInput) -> usize {
     races.0.iter().map(Race::winning_times_count).product()
 }
 
+// Treat the input as one race by combining the numbers, ignoring spaces.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let race = Race::from_input(input);
+    race.winning_times_count()
 }
 
 struct Race {
@@ -23,6 +25,13 @@ struct Race {
 }
 
 impl Race {
+    fn from_input(mut input: AocInput) -> Self {
+        Self {
+            time: Self::parse_line(&input.next().unwrap()),
+            distance: Self::parse_line(&input.next().unwrap()),
+        }
+    }
+
     fn winning_times_count(&self) -> usize {
         // We need to find the lowest and highest button push that beats the record. This means
         // solving: (time - push_time) * push_time >= distance
@@ -36,6 +45,15 @@ impl Race {
         let min = ((-time + sqrt) / -2.0).floor() as usize + 1;
         let max = ((-time - sqrt) / -2.0).ceil() as usize - 1;
         max - min + 1
+    }
+
+    fn parse_line(line: &str) -> usize {
+        line.split(' ')
+            .filter(|part| !part.is_empty())
+            .skip(1)
+            .fold(String::new(), |s, part| s + part)
+            .parse()
+            .unwrap()
     }
 }
 
@@ -74,6 +92,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(71503, part2(AocInput::from_sample()));
     }
 }
