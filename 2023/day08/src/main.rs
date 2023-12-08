@@ -1,8 +1,12 @@
 // https://adventofcode.com/2023/day/8
 
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 
-use aoc::{input::AocInput, iterator::InfiniteRepeatExt};
+use aoc::{
+    input::AocInput,
+    iterator::{InfiniteRepeatExt, IteratorExt},
+    Lcm,
+};
 use text_io::scan;
 
 fn main() {
@@ -16,8 +20,11 @@ fn part1(input: AocInput) -> usize {
     map.follow()
 }
 
+// Starting at multiple positions simultaneously, determine how many steps before they are all at
+// an end.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let map = Map::from_input(input);
+    map.follow_many()
 }
 
 struct Map {
@@ -52,10 +59,31 @@ impl Map {
     }
 
     fn follow(&self) -> usize {
-        let mut current = self.start;
+        self.find_path(self.start, Some(self.end))
+    }
+
+    fn follow_many(&self) -> usize {
+        // It turns out that for every start node, if it reaches an end in N steps, it will then
+        // reach that same end again in N steps. So, all we need is for each node to find the number
+        // of steps before it reaches an end, and then use the lowest common multiple of all those
+        // values.
+        self.nodes
+            .iter()
+            .filter(|node| node.kind == NodeKind::Start)
+            .map(|node| self.find_path(node.name, None))
+            .lcm()
+            .unwrap()
+    }
+
+    fn find_path(&self, start: usize, end: Option<usize>) -> usize {
+        let mut current = start;
         let mut steps = 0;
         for instruction in self.instructions.bytes().infinite_repeat() {
-            if current == self.end {
+            if let Some(end) = end {
+                if current == end {
+                    break;
+                }
+            } else if self.nodes[current].kind == NodeKind::End {
                 break;
             }
 
@@ -77,6 +105,7 @@ struct Node {
     name: usize,
     left: usize,
     right: usize,
+    kind: NodeKind,
 }
 
 impl Node {
@@ -85,12 +114,29 @@ impl Node {
         let left: String;
         let right: String;
         scan!(s.bytes() => "{} = ({}, {})", name, left, right);
+
+        // Used for part 2.
+        let kind = match name.bytes().last().unwrap() {
+            b'A' => NodeKind::Start,
+            b'Z' => NodeKind::End,
+            _ => NodeKind::Regular,
+        };
+
         Self {
             name: name_map.map(name),
             left: name_map.map(left),
             right: name_map.map(right),
+            kind,
         }
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+enum NodeKind {
+    #[default]
+    Regular,
+    Start,
+    End,
 }
 
 struct NameMap {
@@ -130,6 +176,12 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(
+            6,
+            part2(AocInput::from_file(AocInput::get_custom_path(
+                "day8_part2",
+                true
+            )))
+        );
     }
 }
