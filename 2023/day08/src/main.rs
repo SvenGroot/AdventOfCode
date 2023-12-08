@@ -1,12 +1,8 @@
 // https://adventofcode.com/2023/day/8
 
-use std::collections::{hash_map::Entry, HashMap, HashSet};
+use std::collections::{hash_map::Entry, HashMap};
 
-use aoc::{
-    input::AocInput,
-    iterator::{InfiniteRepeatExt, IteratorExt},
-    Lcm,
-};
+use aoc::{input::AocInput, iterator::InfiniteRepeatExt, Lcm};
 use text_io::scan;
 
 fn main() {
