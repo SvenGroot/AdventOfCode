@@ -17,8 +17,12 @@ fn part1(input: AocInput) -> isize {
         .sum()
 }
 
-fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+// Find the previous value in every sequence.
+fn part2(input: AocInput) -> isize {
+    input
+        .parsed::<Sequence>()
+        .map(|s| Sequence::extend_left(&s))
+        .sum()
 }
 
 #[derive(Clone)]
@@ -37,8 +41,18 @@ impl Sequence {
     fn extend(&self) -> isize {
         let diffs = self.diffs();
         let mut target = 0;
-        for diff in diffs {
+        for diff in diffs.iter().rev() {
             target += diff.0.last().unwrap();
+        }
+
+        target
+    }
+
+    fn extend_left(&self) -> isize {
+        let diffs = self.diffs();
+        let mut target = 0;
+        for diff in diffs.iter().rev() {
+            target = diff.0.first().unwrap() - target;
         }
 
         target
@@ -85,6 +99,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(2, part2(AocInput::from_sample()));
     }
 }
