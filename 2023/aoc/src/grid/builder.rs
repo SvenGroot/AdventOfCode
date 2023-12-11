@@ -3,6 +3,7 @@ use ndarray::prelude::*;
 use crate::input::AocInput;
 
 use super::Grid;
+use super::Point;
 
 pub struct GridBuilder<T, I, S>
 where
@@ -10,7 +11,7 @@ where
     S: AsRef<str>,
 {
     input: I,
-    transform: Box<dyn Fn(u8) -> T>,
+    transform: Box<dyn Fn(Point, u8) -> T>,
     extend: Option<(usize, usize, u8)>,
 }
 
@@ -18,7 +19,7 @@ impl GridBuilder<u8, AocInput, String> {
     pub fn from_input(input: AocInput) -> Self {
         Self {
             input,
-            transform: Box::new(|byte| byte),
+            transform: Box::new(|_, byte| byte),
             extend: None,
         }
     }
@@ -32,7 +33,7 @@ where
     pub fn from_lines(input: I) -> Self {
         Self {
             input,
-            transform: Box::new(|byte| byte),
+            transform: Box::new(|_, byte| byte),
             extend: None,
         }
     }
@@ -43,7 +44,10 @@ where
     I: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    pub fn map<U>(self, transform: impl Fn(u8) -> U + Clone + 'static) -> GridBuilder<U, I, S> {
+    pub fn map<U>(
+        self,
+        transform: impl Fn(Point, u8) -> U + Clone + 'static,
+    ) -> GridBuilder<U, I, S> {
         GridBuilder {
             input: self.input,
             transform: Box::new(transform),
@@ -52,7 +56,7 @@ where
     }
 
     pub fn numbers(self) -> GridBuilder<u8, I, S> {
-        self.map(|byte| byte - b'0')
+        self.map(|_, byte| byte - b'0')
     }
 
     /// Extends the grid in all directions by the specified amount.
@@ -68,21 +72,34 @@ where
         let (extend_width, extend_height, extend_value) = self.extend.unwrap_or((0, 0, 0));
         let mut grid: Vec<_> = (0..extend_height).map(|_| Vec::new()).collect();
 
+        let mut row_index = extend_height;
         grid.extend(self.input.map(|line| {
             let mut row: Vec<_> = (0..extend_width)
-                .map(|_| (self.transform)(extend_value))
+                .map(|col| (self.transform)(Point::new(row_index, col), extend_value))
                 .collect();
 
-            row.extend(line.as_ref().bytes().map(self.transform.as_ref()));
-            row.extend((0..extend_width).map(|_| (self.transform)(extend_value)));
+            row.extend(line.as_ref().bytes().enumerate().map(|(col, value)| {
+                (self.transform)(Point::new(row_index, col + extend_width), value)
+            }));
+
+            let col_offset = extend_width + line.as_ref().len();
+            row.extend((0..extend_width).map(|col| {
+                (self.transform)(Point::new(row_index, col + col_offset), extend_value)
+            }));
+            row_index += 1;
             row
         }));
 
         if self.extend.is_some() {
             let max_width = grid.iter().map(|row| row.len()).max().unwrap();
             grid.extend((0..extend_height).map(|_| Vec::new()));
-            for row in &mut grid {
-                row.resize_with(max_width, || (self.transform)(extend_value))
+            for (row_index, row) in grid.iter_mut().enumerate() {
+                let mut col = row.len();
+                row.resize_with(max_width, || {
+                    let result = (self.transform)(Point::new(row_index, col), extend_value);
+                    col += 1;
+                    result
+                })
             }
         }
 
