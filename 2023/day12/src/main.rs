@@ -3,7 +3,6 @@
 use std::str::FromStr;
 
 use aoc::input::AocInput;
-use itertools::Itertools;
 
 fn main() {
     println!("Part 1: {}", part1(AocInput::from_input()));
@@ -22,6 +21,7 @@ fn part2(input: AocInput) -> usize {
     input.map(|_| 0).sum()
 }
 
+#[derive(Debug)]
 struct SpringRow {
     springs: Vec<SpringState>,
     groups: Vec<usize>,
@@ -29,46 +29,96 @@ struct SpringRow {
 
 impl SpringRow {
     fn count_arrangements(mut self) -> usize {
-        let unknown_indices = self
-            .springs
-            .iter()
-            .enumerate()
-            .filter_map(|(index, spring)| (*spring == SpringState::Unknown).then_some(index))
-            .collect_vec();
+        let state = State {
+            spring_index: 0,
+            group_index: 0,
+            current_group_size: 0,
+        };
 
-        let max = 1usize << unknown_indices.len();
-        let mut arrangments = 0;
-        for mut value in 0..max {
-            for index in &unknown_indices {
-                self.springs[*index] = if value & 1 == 1 {
-                    SpringState::Damaged
-                } else {
-                    SpringState::Operational
-                };
-
-                value >>= 1;
-            }
-
-            if self.is_valid() {
-                arrangments += 1;
-            }
-        }
-
-        arrangments
+        self.count_arrangements_core(state)
     }
 
-    fn is_valid(&self) -> bool {
-        // This could easily be done without allocating.
-        let actual = self
-            .springs
-            .iter()
-            .group_by(|spring| **spring)
-            .into_iter()
-            .filter(|(spring, _)| *spring == SpringState::Damaged)
-            .map(|(_, group)| group.count())
-            .collect_vec();
+    fn count_arrangements_core(&mut self, mut state: State) -> usize {
+        while state.spring_index < self.springs.len()
+            && self.springs[state.spring_index] != SpringState::Unknown
+        {
+            if self.springs[state.spring_index] == SpringState::Operational {
+                if !self.reset_group(&mut state) {
+                    // Not a valid state
+                    return 0;
+                }
+            } else {
+                state.current_group_size += 1;
+            }
 
-        actual == self.groups
+            state.spring_index += 1;
+        }
+
+        if state.spring_index == self.springs.len() {
+            // This is a valid arrangement if we've seen all groups.
+            if self.reset_group(&mut state) && state.group_index == self.groups.len() {
+                return 1;
+            }
+
+            return 0;
+        }
+
+        let target_len = self
+            .groups
+            .get(state.group_index)
+            .copied()
+            .unwrap_or_default();
+
+        assert_eq!(self.springs[state.spring_index], SpringState::Unknown);
+        let mut count = 0;
+        if state.current_group_size == 0 || state.current_group_size == target_len {
+            self.springs[state.spring_index] = SpringState::Operational;
+            let mut new_state = State {
+                spring_index: state.spring_index + 1,
+                ..state
+            };
+
+            if new_state.current_group_size != 0 {
+                new_state.current_group_size = 0;
+                new_state.group_index += 1;
+            }
+
+            count += self.count_arrangements_core(new_state);
+        }
+
+        if state.current_group_size < target_len {
+            self.springs[state.spring_index] = SpringState::Damaged;
+            let new_state = State {
+                spring_index: state.spring_index + 1,
+                current_group_size: state.current_group_size + 1,
+                ..state
+            };
+
+            count += self.count_arrangements_core(new_state);
+        }
+
+        self.springs[state.spring_index] = SpringState::Unknown;
+        count
+    }
+
+    fn reset_group(&self, state: &mut State) -> bool {
+        if state.current_group_size == 0 {
+            return true;
+        }
+
+        let target_len = self
+            .groups
+            .get(state.group_index)
+            .copied()
+            .unwrap_or_default();
+
+        if state.current_group_size != target_len {
+            return false;
+        }
+
+        state.current_group_size = 0;
+        state.group_index += 1;
+        true
     }
 }
 
@@ -101,6 +151,12 @@ enum SpringState {
     Operational,
     Damaged,
     Unknown,
+}
+
+struct State {
+    spring_index: usize,
+    group_index: usize,
+    current_group_size: usize,
 }
 
 #[cfg(test)]
