@@ -1,6 +1,6 @@
 // https://adventofcode.com/2023/day/12
 
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use aoc::input::AocInput;
 
@@ -17,8 +17,12 @@ fn part1(input: AocInput) -> usize {
         .sum()
 }
 
+// Unfold the map, then do the above.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    input
+        .parsed::<SpringRow>()
+        .map(|row| row.unfold().count_arrangements())
+        .sum()
 }
 
 #[derive(Debug)]
@@ -28,6 +32,18 @@ struct SpringRow {
 }
 
 impl SpringRow {
+    fn unfold(mut self) -> Self {
+        let original_springs_len = self.springs.len();
+        let original_groups_len = self.groups.len();
+        for _ in 0..4 {
+            self.springs.push(SpringState::Unknown);
+            self.springs.extend_from_within(..original_springs_len);
+            self.groups.extend_from_within(..original_groups_len);
+        }
+
+        self
+    }
+
     fn count_arrangements(mut self) -> usize {
         let state = State {
             spring_index: 0,
@@ -35,10 +51,15 @@ impl SpringRow {
             current_group_size: 0,
         };
 
-        self.count_arrangements_core(state)
+        let mut seen = HashMap::new();
+        self.count_arrangements_core(state, &mut seen)
     }
 
-    fn count_arrangements_core(&mut self, mut state: State) -> usize {
+    fn count_arrangements_core(
+        &mut self,
+        mut state: State,
+        seen: &mut HashMap<State, usize>,
+    ) -> usize {
         while state.spring_index < self.springs.len()
             && self.springs[state.spring_index] != SpringState::Unknown
         {
@@ -63,6 +84,12 @@ impl SpringRow {
             return 0;
         }
 
+        // No more modifying state from this point.
+        let state = state;
+        if let Some(count) = seen.get(&state) {
+            return *count;
+        }
+
         let target_len = self
             .groups
             .get(state.group_index)
@@ -83,7 +110,7 @@ impl SpringRow {
                 new_state.group_index += 1;
             }
 
-            count += self.count_arrangements_core(new_state);
+            count += self.count_arrangements_core(new_state, seen);
         }
 
         if state.current_group_size < target_len {
@@ -94,10 +121,11 @@ impl SpringRow {
                 ..state
             };
 
-            count += self.count_arrangements_core(new_state);
+            count += self.count_arrangements_core(new_state, seen);
         }
 
         self.springs[state.spring_index] = SpringState::Unknown;
+        assert!(seen.insert(state, count).is_none());
         count
     }
 
@@ -153,6 +181,7 @@ enum SpringState {
     Unknown,
 }
 
+#[derive(PartialEq, Eq, Hash)]
 struct State {
     spring_index: usize,
     group_index: usize,
@@ -170,6 +199,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(525152, part2(AocInput::from_sample()));
     }
 }
