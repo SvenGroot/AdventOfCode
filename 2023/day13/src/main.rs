@@ -15,31 +15,57 @@ fn part1(input: AocInput) -> usize {
     input
         .into_vec()
         .split(|line| line.is_empty())
-        .map(|grid| Pattern::from(grid).find_reflection())
+        .map(|grid| Pattern::from(grid).find_reflection(None).unwrap())
         .sum()
 }
 
+// Find one spot in the pattern to change that gets a different reflection line, and use those
+// instead.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    input
+        .into_vec()
+        .split(|line| line.is_empty())
+        .map(|grid| Pattern::from(grid).find_smudge())
+        .sum()
 }
 
-struct Pattern(Grid<Tile>);
+struct Pattern(Grid<bool>);
 
 impl Pattern {
-    fn find_reflection(&self) -> usize {
+    fn find_smudge(&mut self) -> usize {
+        let original = self.find_reflection(None).unwrap();
+        for pos in self.0.bounding_rect().points() {
+            self.0[pos] = !self.0[pos];
+            if let Some(result) = self.find_reflection(Some(original)) {
+                return result;
+            }
+
+            self.0[pos] = !self.0[pos];
+        }
+
+        unreachable!();
+    }
+
+    fn find_reflection(&self, exclude: Option<usize>) -> Option<usize> {
         for col in 0..self.0.width() - 1 {
             if (0..self.0.height()).all(|row| self.check_reflection(Point::new(row, col), false)) {
-                return col + 1;
+                let result = Some(col + 1);
+                if result != exclude {
+                    return result;
+                }
             }
         }
 
         for row in 0..self.0.height() - 1 {
             if (0..self.0.width()).all(|col| self.check_reflection(Point::new(row, col), true)) {
-                return (row + 1) * 100;
+                let result = Some((row + 1) * 100);
+                if result != exclude {
+                    return result;
+                }
             }
         }
 
-        unreachable!();
+        None
     }
 
     fn check_reflection(&self, pos: Point, vertical: bool) -> bool {
@@ -77,20 +103,14 @@ impl From<&[String]> for Pattern {
     fn from(value: &[String]) -> Self {
         let grid = GridBuilder::from_lines(value.iter())
             .map(|_, b| match b {
-                b'.' => Tile::Ash,
-                b'#' => Tile::Rock,
+                b'.' => true,
+                b'#' => false,
                 _ => unreachable!(),
             })
             .build();
 
         Self(grid)
     }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-enum Tile {
-    Ash,
-    Rock,
 }
 
 #[cfg(test)]
@@ -104,6 +124,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(400, part2(AocInput::from_sample()));
     }
 }
