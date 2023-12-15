@@ -69,6 +69,7 @@ impl AocInput {
     where
         <U as std::str::FromStr>::Err: std::fmt::Debug,
     {
+        // Returns a Vec because using an iterator has issues with the lifetime of the string.
         self.single_line()
             .split(separator)
             .map(|val| val.parse().unwrap())
