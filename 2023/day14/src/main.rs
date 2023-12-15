@@ -1,5 +1,7 @@
 // https://adventofcode.com/2023/day/14
 
+use std::collections::HashMap;
+
 use aoc::{
     grid::{Grid, GridBuilder, Point, PointDiff},
     input::AocInput,
@@ -17,10 +19,13 @@ fn part1(input: AocInput) -> usize {
     platform.calculate_load()
 }
 
+// Get the load on the north column after one billion spin cycles.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let mut platform = Platform::from_input(input);
+    platform.spin_cycle(1000000000)
 }
 
+#[derive(Clone, PartialEq, Eq, Hash)]
 struct Platform(Grid<Tile>);
 
 impl Platform {
@@ -46,9 +51,46 @@ impl Platform {
             .sum()
     }
 
+    fn spin_cycle(&mut self, cycles: usize) -> usize {
+        let directions = [
+            PointDiff::UP,
+            PointDiff::LEFT,
+            PointDiff::DOWN,
+            PointDiff::RIGHT,
+        ];
+
+        let mut seen = HashMap::new();
+        let mut loads = Vec::new();
+        for cycle in 0..cycles {
+            let load = self.calculate_load();
+            loads.push(load);
+            println!("{cycle}: {load}");
+            if let Some(previous) = seen.insert(self.clone(), cycle) {
+                println!("Found cycle between {previous} and {cycle}");
+                let len = cycle - previous;
+                let target = previous + ((cycles - previous) % len);
+                return loads[target];
+            }
+
+            for dir in &directions {
+                self.tilt(*dir);
+            }
+        }
+
+        *loads.last().unwrap()
+    }
+
     fn tilt(&mut self, dir: PointDiff) {
-        // This order only works for PointDiff::UP.
-        for pos in self.0.bounding_rect().points() {
+        let rect = self.0.bounding_rect();
+        let points: Box<dyn Iterator<Item = Point>> = match dir {
+            PointDiff::UP => Box::new(rect.points()),
+            PointDiff::DOWN => Box::new(rect.points().rev()),
+            PointDiff::LEFT => Box::new(rect.points_by_col()),
+            PointDiff::RIGHT => Box::new(rect.points_by_col().rev()),
+            _ => unreachable!(),
+        };
+
+        for pos in points {
             if self.0[pos] == Tile::RoundRock {
                 self.move_rock(pos, dir);
             }
@@ -72,7 +114,7 @@ impl Platform {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 enum Tile {
     Ground,
     RoundRock,
@@ -90,6 +132,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(64, part2(AocInput::from_sample()));
     }
 }

@@ -19,7 +19,7 @@ pub use pointdiff::{PointDiff, Rotation};
 pub use rect::{DiffRectangle, Rectangle};
 pub use subgrid::SubGrid;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Grid<T>(Array2<T>);
 
 impl<T: Clone> Grid<T> {

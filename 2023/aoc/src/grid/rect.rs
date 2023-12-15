@@ -68,9 +68,19 @@ impl Rectangle {
             && point.col() <= self.bottom_right.col()
     }
 
-    pub fn points(&self) -> impl Iterator<Item = Point> + '_ {
-        (self.top_left.row()..=self.bottom_right.row()).flat_map(|row| {
-            (self.top_left.col()..=self.bottom_right.col()).map(move |col| Point::new(row, col))
+    pub fn points(&self) -> impl DoubleEndedIterator<Item = Point> {
+        let top_left = self.top_left;
+        let bottom_right = self.bottom_right;
+        (top_left.row()..=bottom_right.row()).flat_map(move |row| {
+            (top_left.col()..=bottom_right.col()).map(move |col| Point::new(row, col))
+        })
+    }
+
+    pub fn points_by_col(&self) -> impl DoubleEndedIterator<Item = Point> {
+        let top_left = self.top_left;
+        let bottom_right = self.bottom_right;
+        (top_left.col()..=bottom_right.col()).flat_map(move |row| {
+            (top_left.row()..=bottom_right.row()).map(move |col| Point::new(row, col))
         })
     }
 }
