@@ -22,8 +22,10 @@ fn part1(input: AocInput) -> usize {
     contraption.count_energized()
 }
 
+// Find a starting point along an edge that energizes the most tiles.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let mut contraption = Contraption::from_input(input);
+    contraption.optimal_beam()
 }
 
 struct Contraption(Grid<Tile>);
@@ -47,6 +49,12 @@ impl Contraption {
         Self(grid)
     }
 
+    fn reset(&mut self) {
+        for (_, tile) in self.0.cells_mut() {
+            tile.energized.clear()
+        }
+    }
+
     fn trace_beam(&mut self, mut pos: Point, mut dir: PointDiff) {
         loop {
             if !self.0[pos].energized.insert(dir) {
@@ -54,7 +62,6 @@ impl Contraption {
                 break;
             }
 
-            // println!("{self:?}");
             let (dir1, dir2) = match self.0[pos].kind {
                 TileKind::Empty => (dir, None),
                 TileKind::MirrorLeft => {
@@ -102,6 +109,39 @@ impl Contraption {
         }
     }
 
+    fn optimal_beam(&mut self) -> usize {
+        self.0
+            .bounding_rect()
+            .edge_points()
+            .map(|pos| {
+                self.reset();
+                let result1 = if pos.row() == 0 {
+                    self.trace_beam(pos, PointDiff::DOWN);
+                    self.count_energized()
+                } else if pos.row() == self.0.height() - 1 {
+                    self.trace_beam(pos, PointDiff::UP);
+                    self.count_energized()
+                } else {
+                    0
+                };
+
+                self.reset();
+                let result2 = if pos.col() == 0 {
+                    self.trace_beam(pos, PointDiff::RIGHT);
+                    self.count_energized()
+                } else if pos.col() == self.0.width() - 1 {
+                    self.trace_beam(pos, PointDiff::LEFT);
+                    self.count_energized()
+                } else {
+                    0
+                };
+
+                result1.max(result2)
+            })
+            .max()
+            .unwrap()
+    }
+
     fn count_energized(&self) -> usize {
         self.0
             .cells()
@@ -142,6 +182,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(51, part2(AocInput::from_sample()));
     }
 }

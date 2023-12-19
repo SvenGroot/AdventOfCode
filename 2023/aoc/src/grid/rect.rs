@@ -68,6 +68,15 @@ impl Rectangle {
             && point.col() <= self.bottom_right.col()
     }
 
+    pub fn add_point(&self, point: Point, diff: PointDiff) -> Option<Point> {
+        let result = point.add_diff(diff)?;
+        (result.row() >= self.top_left.row()
+            && result.row() <= self.bottom_right.row()
+            && result.col() >= self.top_left.col()
+            && result.col() <= self.bottom_right.col())
+        .then_some(result)
+    }
+
     pub fn points(&self) -> impl DoubleEndedIterator<Item = Point> {
         let top_left = self.top_left;
         let bottom_right = self.bottom_right;
@@ -82,6 +91,38 @@ impl Rectangle {
         (top_left.col()..=bottom_right.col()).flat_map(move |row| {
             (top_left.row()..=bottom_right.row()).map(move |col| Point::new(row, col))
         })
+    }
+
+    pub fn edge_points(&self) -> Edges {
+        Edges {
+            rect: *self,
+            pos: Some(self.top_left),
+        }
+    }
+}
+
+pub struct Edges {
+    rect: Rectangle,
+    pos: Option<Point>,
+}
+
+impl Iterator for Edges {
+    type Item = Point;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let pos = self.pos?;
+        let next = if pos.col() == self.rect.bottom_right.col() {
+            Point::new(pos.row() + 1, self.rect.top_left.col())
+        } else if pos.row() == self.rect.top_left.row() || pos.row() == self.rect.bottom_right.row()
+        {
+            Point::new(pos.row(), pos.col() + 1)
+        } else {
+            assert!(pos.col() == self.rect.top_left.col());
+            Point::new(pos.row(), self.rect.bottom_right.col())
+        };
+
+        self.pos = self.rect.contains(next).then_some(next);
+        Some(pos)
     }
 }
 
