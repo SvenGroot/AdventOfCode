@@ -76,6 +76,10 @@ impl PointDiff {
         Self::new(self.row.abs(), self.col.abs())
     }
 
+    pub fn is_horizontal(&self) -> bool {
+        self.row == 0 && self.col != 0
+    }
+
     pub fn get_dir_char(&self) -> Option<char> {
         Some(match *self {
             PointDiff::UP => '^',
