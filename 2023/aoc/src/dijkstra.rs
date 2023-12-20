@@ -26,10 +26,19 @@ where
     Vertex: Copy + Eq + Hash,
 {
     let info = shortest_paths_core(graph, source, Some(*dest));
+    path_from_info(&info, dest)
+}
 
+pub fn path_from_info<Vertex>(
+    info: &HashMap<Vertex, VertexInfo<Vertex>>,
+    dest: &Vertex,
+) -> Vec<Vertex>
+where
+    Vertex: Copy + Eq + Hash,
+{
     // Walk the path from dest to source and then reverse it.
     let mut path = Vec::new();
-    if info[dest].previous.is_some() || *dest == *source {
+    if info[dest].previous.is_some() {
         let mut current = Some(*dest);
         while let Some(vertex) = current {
             path.push(vertex);
