@@ -15,20 +15,31 @@ fn main() {
 
 // Find the path that minimizes heat loss.
 fn part1(input: AocInput) -> usize {
-    let map = TrafficMap::from_input(input);
+    let map = TrafficMap::from_input(input, false);
     map.min_heat_loss()
 }
 
+// Same path but with ultra crucibles which have different rules for how they move.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let map = TrafficMap::from_input(input, true);
+    map.min_heat_loss()
 }
 
-struct TrafficMap(Grid<u8>);
+struct TrafficMap {
+    grid: Grid<u8>,
+    min_steps: usize,
+    max_steps: usize,
+}
 
 impl TrafficMap {
-    fn from_input(input: AocInput) -> Self {
+    fn from_input(input: AocInput, ultra: bool) -> Self {
         let grid = GridBuilder::from_input(input).map(|_, b| b - b'0').build();
-        Self(grid)
+        let (min_steps, max_steps) = if ultra { (4, 10) } else { (0, 3) };
+        Self {
+            grid,
+            min_steps,
+            max_steps,
+        }
     }
 
     fn min_heat_loss(&self) -> usize {
@@ -39,7 +50,7 @@ impl TrafficMap {
         };
 
         let info = shortest_paths(self, &start);
-        let dest = self.0.bounding_rect().bottom_right();
+        let dest = self.grid.bounding_rect().bottom_right();
 
         // Of all the vertices matching the destination position, find the one with the smallest
         // heat loss.
@@ -51,7 +62,7 @@ impl TrafficMap {
 
         // Get the path and draw it.
         let path = path_from_info(&info, dest);
-        for (row_index, row) in self.0.rows().enumerate() {
+        for (row_index, row) in self.grid.rows().enumerate() {
             for (col, cell) in row.iter().enumerate() {
                 if let Some(v) = path.iter().find(|v| v.pos == Point::new(row_index, col)) {
                     print!("{}", v.dir.get_dir_char().unwrap())
@@ -76,35 +87,63 @@ struct MapVertex {
 
 impl Graph<MapVertex> for TrafficMap {
     fn vertices(&self) -> HashSet<MapVertex> {
-        self.0
+        self.grid
             .bounding_rect()
             .points()
             .flat_map(|pos| {
-                PointDiff::STRAIGHT_NEIGHBORS
-                    .iter()
-                    .flat_map(move |&dir| (0..4).map(move |steps| MapVertex { pos, dir, steps }))
+                PointDiff::STRAIGHT_NEIGHBORS.iter().flat_map(move |&dir| {
+                    (0..=self.max_steps).map(move |steps| MapVertex { pos, dir, steps })
+                })
             })
             .collect()
     }
 
     fn neighbors(&self, v: &MapVertex) -> Vec<(MapVertex, usize)> {
         let mut result = Vec::new();
-        if v.steps < 3 {
-            if let Some(pos) = self.0.add_point(v.pos, v.dir) {
+
+        if v.steps == 0 {
+            assert!(v.pos == Point::default());
+            let pos = Point::new(0, 1);
+            result.push((
+                MapVertex {
+                    pos,
+                    dir: PointDiff::RIGHT,
+                    steps: 1,
+                },
+                self.grid[pos] as usize,
+            ));
+
+            let pos = Point::new(1, 0);
+            result.push((
+                MapVertex {
+                    pos,
+                    dir: PointDiff::DOWN,
+                    steps: 1,
+                },
+                self.grid[pos] as usize,
+            ));
+
+            return result;
+        }
+
+        if v.steps < self.max_steps {
+            if let Some(pos) = self.grid.add_point(v.pos, v.dir) {
                 result.push((
                     MapVertex {
                         pos,
                         dir: v.dir,
                         steps: v.steps + 1,
                     },
-                    self.0[pos] as usize,
+                    self.grid[pos] as usize,
                 ));
             }
         }
 
-        for dir in [v.dir.rotate(Rotation::Left), v.dir.rotate(Rotation::Right)] {
-            if let Some(pos) = self.0.add_point(v.pos, dir) {
-                result.push((MapVertex { pos, dir, steps: 1 }, self.0[pos] as usize));
+        if v.steps >= self.min_steps {
+            for dir in [v.dir.rotate(Rotation::Left), v.dir.rotate(Rotation::Right)] {
+                if let Some(pos) = self.grid.add_point(v.pos, dir) {
+                    result.push((MapVertex { pos, dir, steps: 1 }, self.grid[pos] as usize));
+                }
             }
         }
 
@@ -123,6 +162,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(94, part2(AocInput::from_sample()));
     }
 }
