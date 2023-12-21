@@ -56,6 +56,31 @@ impl<T: Clone> Grid<T> {
         let extra_rows = Array::from_elem((height - self.height(), width), value);
         self.0.append(Axis(0), extra_rows.view()).unwrap();
     }
+
+    /// For cells matching `cond`, set their neighbors to `value` if those neighbors match
+    /// `grow_cond`.
+    pub fn grow_value(&mut self, cond: impl Fn(&T) -> bool, grow_cond: impl Fn(&T) -> bool) {
+        let rect = self.bounding_rect();
+        loop {
+            let mut new_tiles = false;
+            for pos in rect.points() {
+                if cond(&self[pos]) {
+                    let value = self[pos].clone();
+                    for nb in self.straight_neighbors(pos) {
+                        let nb = &mut self[nb];
+                        if grow_cond(nb) {
+                            new_tiles = true;
+                            *nb = value.clone();
+                        }
+                    }
+                }
+            }
+
+            if !new_tiles {
+                break;
+            }
+        }
+    }
 }
 
 impl<T> Grid<T> {
