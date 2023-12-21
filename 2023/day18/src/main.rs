@@ -1,11 +1,8 @@
 // https://adventofcode.com/2023/day/18
 
-use std::{fmt::Display, str::FromStr};
+use std::str::FromStr;
 
-use aoc::{
-    grid::{Grid, Point, PointDiff},
-    input::AocInput,
-};
+use aoc::{grid::PointDiff, input::AocInput};
 
 fn main() {
     println!("Part 1: {}", part1(AocInput::from_input()));
@@ -13,76 +10,69 @@ fn main() {
 }
 
 // Calculate the trench size.
-// N.B. Slow on debug mode.
 fn part1(input: AocInput) -> usize {
     let map = DigMap::from_input(input);
     map.trench_size()
 }
 
+// Calculate the trench size, using instructions decoded from the "color" field.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let map = DigMap::from_fixed_input(input);
+    map.trench_size()
 }
 
-struct DigMap(Grid<Tile>);
+struct DigMap(Vec<PointDiff>, usize);
 
 impl DigMap {
     fn from_input(input: AocInput) -> Self {
-        const SIZE: usize = 1000;
-        let mut grid = Grid::new(SIZE, SIZE, Tile::Unknown);
-        let mut current = Point::new(SIZE / 2, SIZE / 2);
-        grid[current] = Tile::Inside;
-        println!("Following plan.");
+        let mut current = PointDiff::default();
+        let mut result = vec![current];
+        let mut length = 0;
         for instruction in input.parsed::<DigInstruction>() {
-            for _ in 0..instruction.length {
-                current += instruction.dir;
-                grid[current] = Tile::Inside;
-            }
+            current += instruction.dir * instruction.length as isize;
+            length += instruction.length;
+            result.push(current);
         }
 
-        for (_, tile) in grid.edge_cells_mut() {
-            if *tile == Tile::Unknown {
-                *tile = Tile::Outside
-            }
+        Self(result, length)
+    }
+
+    fn from_fixed_input(input: AocInput) -> Self {
+        let mut current = PointDiff::default();
+        let mut result = vec![current];
+        let mut length = 0;
+        for instruction in input.parsed::<FixedInstruction>() {
+            current += instruction.dir * instruction.length as isize;
+            length += instruction.length;
+            result.push(current);
         }
 
-        println!("Marking outside");
-        grid.grow_value(|t| *t == Tile::Outside, |t| *t == Tile::Unknown);
-        println!("Marking inside");
-        for (_, tile) in grid.cells_mut() {
-            if *tile == Tile::Unknown {
-                *tile = Tile::Inside
-            }
-        }
-
-        Self(grid)
+        Self(result, length)
     }
 
     fn trench_size(&self) -> usize {
-        self.0
-            .cells()
-            .filter(|(_, cell)| **cell == Tile::Inside)
-            .count()
-    }
-}
+        let sum1: isize = self
+            .0
+            .windows(2)
+            .map(|window| window[0].row() * window[1].col())
+            .sum();
 
-impl Display for DigMap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0
-            .write_mapped(f, |cell| if *cell == Tile::Inside { '#' } else { '.' })
-    }
-}
+        let sum2: isize = self
+            .0
+            .windows(2)
+            .map(|window| window[0].col() * window[1].row())
+            .sum();
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Tile {
-    Unknown,
-    Inside,
-    Outside,
+        // I found this method of getting the area online, but the formula given is just
+        // abs(sum1 - sum2) / 2. For some reason we need to add half the perimeter as well, and then
+        // it's off by one. Not sure why, but it works.
+        (sum1.abs_diff(sum2) + self.1) / 2 + 1
+    }
 }
 
 struct DigInstruction {
     dir: PointDiff,
     length: usize,
-    _color: String,
 }
 
 impl FromStr for DigInstruction {
@@ -93,11 +83,25 @@ impl FromStr for DigInstruction {
         let dir = parts.next().unwrap();
         let dir = PointDiff::from_char(dir.as_bytes()[0], [b'U', b'R', b'D', b'L']).unwrap();
         let length = parts.next().unwrap().parse().unwrap();
-        let color = parts.next().unwrap().into();
+        Ok(Self { dir, length })
+    }
+}
+
+struct FixedInstruction {
+    dir: PointDiff,
+    length: usize,
+}
+
+impl FromStr for FixedInstruction {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let color = s.split(' ').nth(2).unwrap();
+        let length = &color[2..7];
+        let dir = color.as_bytes()[7];
         Ok(Self {
-            dir,
-            length,
-            _color: color,
+            dir: PointDiff::from_char(dir, [b'3', b'0', b'1', b'2']).unwrap(),
+            length: usize::from_str_radix(length, 16).unwrap(),
         })
     }
 }
@@ -113,6 +117,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(952408144115, part2(AocInput::from_sample()));
     }
 }
