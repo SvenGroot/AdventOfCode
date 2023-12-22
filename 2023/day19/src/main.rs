@@ -1,10 +1,12 @@
 // https://adventofcode.com/2023/day/19
 
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, ops::Range, str::FromStr};
 
 use aoc::input::AocInput;
 
 mod parser;
+
+const MAX: u64 = 4001;
 
 fn main() {
     println!("Part 1: {}", part1(AocInput::from_input()));
@@ -17,8 +19,10 @@ fn part1(input: AocInput) -> u64 {
     system.check_parts()
 }
 
-fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+// Get the total amount of accepted rating combinations.
+fn part2(input: AocInput) -> u64 {
+    let system = System::from_input(input);
+    system.workflows["in"].accepted_count(AcceptedRanges::all(), &system.workflows)
 }
 
 struct System {
@@ -73,6 +77,21 @@ impl Workflow {
             .next()
             .unwrap()
     }
+
+    fn accepted_count(
+        &self,
+        mut remaining: AcceptedRanges,
+        workflows: &HashMap<String, Workflow>,
+    ) -> u64 {
+        self.rules
+            .iter()
+            .map(|rule| {
+                let (rem, count) = rule.accepted_ranges(remaining.clone(), workflows);
+                remaining = rem;
+                count
+            })
+            .sum()
+    }
 }
 
 impl FromStr for Workflow {
@@ -96,6 +115,34 @@ impl Rule {
             .as_ref()
             .map_or(true, |cond| cond.eval(part))
             .then_some(&self.target)
+    }
+
+    fn accepted_ranges(
+        &self,
+        mut input: AcceptedRanges,
+        workflows: &HashMap<String, Workflow>,
+    ) -> (AcceptedRanges, u64) {
+        let mut remaining = AcceptedRanges::none();
+        if let Some(condition) = &self.condition {
+            let (passed, failed) = match condition.operation {
+                Operation::GreaterThan => (condition.value + 1..MAX, 1..condition.value + 1),
+                Operation::LessThan => (1..condition.value, condition.value..MAX),
+            };
+
+            remaining = input.clone();
+            input.restrict_range(condition.field, passed);
+            remaining.restrict_range(condition.field, failed);
+        }
+
+        let count = if self.target == "A" {
+            input.count()
+        } else if self.target == "R" {
+            0
+        } else {
+            workflows[&self.target].accepted_count(input, workflows)
+        };
+
+        (remaining, count)
     }
 }
 
@@ -155,6 +202,29 @@ impl FromStr for Part {
     }
 }
 
+#[derive(Clone)]
+struct AcceptedRanges(HashMap<char, Range<u64>>);
+
+impl AcceptedRanges {
+    fn all() -> Self {
+        Self([('x', 1..MAX), ('m', 1..MAX), ('a', 1..MAX), ('s', 1..MAX)].into())
+    }
+
+    fn none() -> Self {
+        Self([('x', 1..1), ('m', 1..1), ('a', 1..1), ('s', 1..1)].into())
+    }
+
+    fn restrict_range(&mut self, field: char, range: Range<u64>) {
+        // Intersect the two ranges.
+        let old_range = self.0.get_mut(&field).unwrap();
+        *old_range = range.start.max(old_range.start)..range.end.min(old_range.end)
+    }
+
+    fn count(&self) -> u64 {
+        self.0.values().map(|r| r.end - r.start).product()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -166,6 +236,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(167409079868000, part2(AocInput::from_sample()));
     }
 }
