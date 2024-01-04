@@ -1,11 +1,8 @@
 // https://adventofcode.com/2023/day/20
 
-use std::{
-    collections::{HashMap, VecDeque},
-    str::FromStr,
-};
+use std::collections::{HashMap, VecDeque};
 
-use aoc::input::AocInput;
+use aoc::{input::AocInput, NameMap};
 
 fn main() {
     println!("Part 1: {}", part1(AocInput::from_input()));
@@ -14,52 +11,70 @@ fn main() {
 
 // Count the number of low and high pulses if the button is pushed 1000 times.
 fn part1(input: AocInput) -> usize {
-    let mut config = ModuleConfig::from_input(input);
+    let (mut config, broadcaster) = ModuleConfig::from_input(input);
     let mut state = State {
         pending: VecDeque::new(),
         high_count: 0,
         low_count: 0,
+        rx_low_count: 0,
     };
 
     for _ in 0..1000 {
-        config.push_button(&mut state);
+        config.push_button(&mut state, broadcaster);
     }
 
     state.high_count * state.low_count
 }
 
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let (mut config, broadcaster) = ModuleConfig::from_input(input);
+    let mut state = State {
+        pending: VecDeque::new(),
+        high_count: 0,
+        low_count: 0,
+        rx_low_count: 0,
+    };
+
+    for i in 0..10000000000 {
+        state.rx_low_count = 0;
+        config.push_button(&mut state, broadcaster);
+        if state.rx_low_count == 1 {
+            return i;
+        }
+    }
+
+    unreachable!();
 }
 
-struct ModuleConfig(HashMap<String, Module>);
+struct ModuleConfig(HashMap<usize, Module>);
 
 impl ModuleConfig {
-    fn from_input(input: AocInput) -> Self {
+    fn from_input(input: AocInput) -> (Self, usize) {
+        let mut name_map = NameMap::new();
         let mut modules: HashMap<_, _> = input
-            .parsed::<Module>()
-            .map(|module| (module.name.clone(), module))
+            .map(|line| Module::from_str(&line, &mut name_map))
+            .map(|module| (module.name, module))
             .collect();
 
         let clone = modules.clone();
         for module in clone.values() {
             for output in &module.outputs {
                 if let Some(m) = modules.get_mut(output) {
-                    m.add_input(module.name.clone());
+                    m.add_input(module.name);
                 }
             }
         }
 
-        Self(modules)
+        (Self(modules), name_map.map("broadcaster".into()))
     }
 
-    fn push_button(&mut self, state: &mut State) {
-        let broadcaster = self.0.get_mut("broadcaster").unwrap();
+    fn push_button(&mut self, state: &mut State, broadcaster: usize) {
+        let broadcaster = self.0.get_mut(&broadcaster).unwrap();
         state.low_count += 1;
-        broadcaster.pulse("button", false, state);
+        broadcaster.pulse(usize::MAX, false, state);
         while let Some(next) = state.pending.pop_front() {
             if let Some(dest) = self.0.get_mut(&next.to) {
-                dest.pulse(&next.from, next.high, state);
+                dest.pulse(next.from, next.high, state);
             }
         }
     }
@@ -67,19 +82,20 @@ impl ModuleConfig {
 
 #[derive(Clone)]
 struct Module {
-    name: String,
+    name: usize,
     kind: ModuleKind,
-    outputs: Vec<String>,
+    outputs: Vec<usize>,
+    count: bool,
 }
 
 impl Module {
-    fn add_input(&mut self, name: String) {
+    fn add_input(&mut self, name: usize) {
         if let ModuleKind::Conjunction(inputs) = &mut self.kind {
             inputs.insert(name, false);
         }
     }
 
-    fn pulse(&mut self, from: &str, high: bool, state: &mut State) {
+    fn pulse(&mut self, from: usize, high: bool, state: &mut State) {
         let output_pulse = match &mut self.kind {
             ModuleKind::Broadcast => high,
             ModuleKind::FlipFlop(state) => {
@@ -91,7 +107,7 @@ impl Module {
                 }
             }
             ModuleKind::Conjunction(inputs) => {
-                *inputs.get_mut(from).unwrap() = high;
+                *inputs.get_mut(&from).unwrap() = high;
                 !inputs.values().all(|high| *high)
             }
         };
@@ -99,25 +115,25 @@ impl Module {
         if output_pulse {
             state.high_count += self.outputs.len();
         } else {
+            if self.count {
+                state.rx_low_count += 1;
+            }
+
             state.low_count += self.outputs.len();
         }
 
         state
             .pending
             .extend(self.outputs.iter().map(|output| PendingPulse {
-                from: self.name.clone(),
-                to: output.clone(),
+                from: self.name,
+                to: *output,
                 high: output_pulse,
             }));
     }
-}
 
-impl FromStr for Module {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str, map: &mut NameMap) -> Self {
         let (name, outputs) = s.split_once(" -> ").unwrap();
-        let outputs = outputs.split(", ").map(|s| s.into()).collect();
+        let outputs: Vec<_> = outputs.split(", ").map(|s| map.map(s.into())).collect();
         let (name, kind) = if let Some(name) = name.strip_prefix('%') {
             (name, ModuleKind::FlipFlop(false))
         } else if let Some(name) = name.strip_prefix('&') {
@@ -127,11 +143,16 @@ impl FromStr for Module {
             (name, ModuleKind::Broadcast)
         };
 
-        Ok(Self {
-            name: name.into(),
+        let count = outputs.contains(&map.map("rx".into()));
+        if count {
+            println!("Counting!");
+        }
+        Self {
+            name: map.map(name.into()),
             kind,
             outputs,
-        })
+            count,
+        }
     }
 }
 
@@ -139,12 +160,12 @@ impl FromStr for Module {
 enum ModuleKind {
     Broadcast,
     FlipFlop(bool),
-    Conjunction(HashMap<String, bool>),
+    Conjunction(HashMap<usize, bool>),
 }
 
 struct PendingPulse {
-    from: String,
-    to: String,
+    from: usize,
+    to: usize,
     high: bool,
 }
 
@@ -152,6 +173,7 @@ struct State {
     pending: VecDeque<PendingPulse>,
     high_count: usize,
     low_count: usize,
+    rx_low_count: usize,
 }
 
 #[cfg(test)]

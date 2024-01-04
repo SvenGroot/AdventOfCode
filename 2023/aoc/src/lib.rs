@@ -11,6 +11,8 @@ pub mod nested_list;
 pub mod slice;
 pub mod tree;
 
+use std::collections::HashMap;
+
 use num::Integer;
 
 pub trait Lcm<T> {
@@ -29,5 +31,25 @@ where
         }
 
         Some(lcm)
+    }
+}
+
+#[derive(Default)]
+pub struct NameMap {
+    map: HashMap<String, usize>,
+    next: usize,
+}
+
+impl NameMap {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn map(&mut self, name: String) -> usize {
+        *self.map.entry(name).or_insert_with(|| {
+            let result = self.next;
+            self.next += 1;
+            result
+        })
     }
 }
