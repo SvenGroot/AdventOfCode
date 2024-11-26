@@ -418,17 +418,8 @@ mod tests {
 
         assert_eq!(5, grid.width());
         assert_eq!(3, grid.height());
-        assert_eq!(
-            &[b'1', b'2', b'3', b' ', b' '],
-            grid.0.slice(s![0, ..]).as_slice().unwrap()
-        );
-        assert_eq!(
-            &[b'1', b'2', b'3', b'4', b'5'],
-            grid.0.slice(s![1, ..]).as_slice().unwrap()
-        );
-        assert_eq!(
-            &[b'1', b'2', b' ', b' ', b' '],
-            grid.0.slice(s![2, ..]).as_slice().unwrap()
-        );
+        assert_eq!(b"123  ", grid.0.slice(s![0, ..]).as_slice().unwrap());
+        assert_eq!(b"12345", grid.0.slice(s![1, ..]).as_slice().unwrap());
+        assert_eq!(b"12   ", grid.0.slice(s![2, ..]).as_slice().unwrap());
     }
 }
