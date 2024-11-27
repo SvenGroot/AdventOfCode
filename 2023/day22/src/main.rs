@@ -1,5 +1,7 @@
 // https://adventofcode.com/2023/day/22
 
+use std::collections::HashSet;
+
 use aoc::{
     grid3d::{Line3D, PointDiff3D},
     input::AocInput,
@@ -7,23 +9,39 @@ use aoc::{
 };
 
 fn main() {
-    println!("Part 1: {}", part1(AocInput::from_input()));
-    println!("Part 2: {}", part2(AocInput::from_input()));
+    let mut stack = BrickStack::from_input(AocInput::from_input());
+    stack.settle();
+    println!("Settled");
+    println!("Part 1: {}", part1(&stack));
+    println!("Part 2: {}", part2(&stack));
 }
 
 // How many bricks can be disintegrated without moving other bricks after letting the bricks fall
 // to their final positions.
-fn part1(input: AocInput) -> usize {
-    let mut stack = BrickStack::from_input(input);
-    stack.settle();
-    println!("Settled");
+fn part1(stack: &BrickStack) -> usize {
     stack.disintegrate_count()
 }
 
-fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+// The sum of all chain reactions when bricks are removed.
+// N.B. This is quite slow, it takes a few minutes in release mode.
+fn part2(stack: &BrickStack) -> usize {
+    let supports = (0..stack.0.len())
+        .map(|index| stack.brick_supports(index))
+        .into_vec();
+
+    // Use the inverse of part 1 to determine which bricks will have an effect, and then re-settle.
+    (0..stack.0.len())
+        .filter(|&index| supports.iter().any(|s| s.len() == 1 && s[0] == index))
+        .map(|index| {
+            println!("{index}");
+            let mut new_stack = stack.clone();
+            new_stack.0.remove(index);
+            new_stack.settle()
+        })
+        .sum()
 }
 
+#[derive(Clone)]
 struct BrickStack(Vec<Line3D>);
 
 impl BrickStack {
@@ -35,18 +53,23 @@ impl BrickStack {
         )
     }
 
-    fn settle(&mut self) {
+    fn settle(&mut self) -> usize {
+        let mut moved = HashSet::new();
         loop {
             let mut changed_any = false;
             for i in 0..self.0.len() {
-                let changed = self.drop_brick(i);
-                changed_any |= changed;
+                if self.drop_brick(i) {
+                    changed_any = true;
+                    moved.insert(i);
+                }
             }
 
             if !changed_any {
                 break;
             }
         }
+
+        moved.len()
     }
 
     // Drop one brick as often as possible
@@ -106,11 +129,15 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        assert_eq!(5, part1(AocInput::from_sample()));
+        let mut stack = BrickStack::from_input(AocInput::from_sample());
+        stack.settle();
+        assert_eq!(5, part1(&stack));
     }
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        let mut stack = BrickStack::from_input(AocInput::from_sample());
+        stack.settle();
+        assert_eq!(7, part2(&stack));
     }
 }
