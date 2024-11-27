@@ -100,6 +100,18 @@ impl PointDiff {
     pub fn invert(&self) -> Self {
         Self::new(-self.row, -self.col)
     }
+
+    pub fn neighbors<'a>(&self, neighbors: &'a [PointDiff]) -> Neighbors<'a> {
+        Neighbors {
+            point: *self,
+            neighbors,
+            index: 0,
+        }
+    }
+
+    pub fn straight_neighbors(&self) -> Neighbors<'static> {
+        self.neighbors(&Self::STRAIGHT_NEIGHBORS)
+    }
 }
 
 impl TryFrom<Point> for PointDiff {
@@ -179,8 +191,30 @@ pub enum Rotation {
     Right,
 }
 
+pub struct Neighbors<'a> {
+    point: PointDiff,
+    neighbors: &'a [PointDiff],
+    index: usize,
+}
+
+impl<'a> Iterator for Neighbors<'a> {
+    type Item = PointDiff;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.neighbors.len() {
+            return None;
+        }
+
+        let diff = self.neighbors[self.index];
+        self.index += 1;
+        Some(self.point + diff)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::iterator::IteratorExt;
+
     use super::*;
 
     #[test]
@@ -203,5 +237,20 @@ mod tests {
         assert_eq!(PointDiff::DOWN, dir);
         let dir = dir.rotate(Rotation::Left);
         assert_eq!(PointDiff::RIGHT, dir);
+    }
+
+    #[test]
+    fn test_straight_neighbors() {
+        let pos = PointDiff::default();
+        let nb = pos.straight_neighbors().into_vec();
+        assert_eq!(
+            &[
+                PointDiff::new(-1, 0),
+                PointDiff::new(0, 1),
+                PointDiff::new(1, 0),
+                PointDiff::new(0, -1)
+            ],
+            nb.as_slice()
+        );
     }
 }

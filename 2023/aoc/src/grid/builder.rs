@@ -11,7 +11,7 @@ where
     S: AsRef<str>,
 {
     input: I,
-    transform: Box<dyn Fn(Point, u8) -> T>,
+    transform: Box<dyn FnMut(Point, u8) -> T>,
     extend: Option<(usize, usize, u8)>,
 }
 
@@ -46,7 +46,7 @@ where
 {
     pub fn map<U>(
         self,
-        transform: impl Fn(Point, u8) -> U + Clone + 'static,
+        transform: impl FnMut(Point, u8) -> U + Clone + 'static,
     ) -> GridBuilder<U, I, S> {
         GridBuilder {
             input: self.input,
@@ -68,7 +68,7 @@ where
         }
     }
 
-    pub fn build(self) -> Grid<T> {
+    pub fn build(mut self) -> Grid<T> {
         let (extend_width, extend_height, extend_value) = self.extend.unwrap_or((0, 0, 0));
         let mut grid: Vec<_> = (0..extend_height).map(|_| Vec::new()).collect();
 

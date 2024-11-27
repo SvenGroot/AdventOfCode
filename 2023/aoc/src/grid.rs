@@ -186,6 +186,10 @@ impl<T> Grid<T> {
         self.neighbors(point, &PointDiff::STRAIGHT_NEIGHBORS)
     }
 
+    pub fn straight_neighbors_wrapped(&self, point: Point) -> impl Iterator<Item = Point> {
+        self.neighbors_wrapped(point, &PointDiff::STRAIGHT_NEIGHBORS)
+    }
+
     pub fn all_neighbors(&self, point: Point) -> impl Iterator<Item = Point> {
         self.neighbors(point, &PointDiff::ALL_NEIGHBORS)
     }
@@ -202,13 +206,21 @@ impl<T> Grid<T> {
             .filter(move |nb| nb.row() < height && nb.col() < width)
     }
 
+    pub fn neighbors_wrapped<'a>(
+        &self,
+        point: Point,
+        neighbors: &'a [PointDiff],
+    ) -> impl Iterator<Item = Point> + 'a {
+        point.neighbors_wrapped(neighbors, self.height(), self.width())
+    }
+
     // Adds a diff to a point, only if the result is on the grid.
     pub fn add_point(&self, point: Point, diff: PointDiff) -> Option<Point> {
         let result = point.add_diff(diff)?;
         (result.row() < self.height() && result.col() < self.width()).then_some(result)
     }
 
-    pub fn add_point_wrapped(&self, point: Point, diff: PointDiff) -> Point {
+    pub fn add_point_wrapped(&self, point: Point, diff: PointDiff) -> Option<Point> {
         point.add_diff_wrapped(diff, self.height(), self.width())
     }
 

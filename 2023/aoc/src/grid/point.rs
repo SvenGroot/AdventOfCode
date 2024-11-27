@@ -38,11 +38,17 @@ impl Point {
         })
     }
 
-    pub fn add_diff_wrapped(&self, diff: PointDiff, max_row: usize, max_col: usize) -> Self {
-        Self {
-            row: self.row.wrapping_add_signed(diff.row()) % max_row,
-            col: self.col.wrapping_add_signed(diff.col()) % max_col,
-        }
+    pub fn add_diff_wrapped(
+        &self,
+        diff: PointDiff,
+        max_row: usize,
+        max_col: usize,
+    ) -> Option<Self> {
+        let value = self.into_diff()? + diff;
+        Some(Self {
+            row: value.row().rem_euclid(max_row.try_into().ok()?) as usize,
+            col: value.col().rem_euclid(max_col.try_into().ok()?) as usize,
+        })
     }
 
     pub fn diff(&self, other: Point) -> Option<PointDiff> {
@@ -79,6 +85,21 @@ impl Point {
             point: *self,
             neighbors,
             index: 0,
+        }
+    }
+
+    pub fn neighbors_wrapped<'a>(
+        &self,
+        neighbors: &'a [PointDiff],
+        max_row: usize,
+        max_col: usize,
+    ) -> NeighborsWrapped<'a> {
+        NeighborsWrapped {
+            point: *self,
+            neighbors,
+            index: 0,
+            max_row,
+            max_col,
         }
     }
 
@@ -229,6 +250,32 @@ impl<'a> Iterator for Neighbors<'a> {
     }
 }
 
+pub struct NeighborsWrapped<'a> {
+    point: Point,
+    neighbors: &'a [PointDiff],
+    index: usize,
+    max_row: usize,
+    max_col: usize,
+}
+
+impl<'a> Iterator for NeighborsWrapped<'a> {
+    type Item = Point;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.neighbors.len() {
+            return None;
+        }
+
+        let diff = self.neighbors[self.index];
+        self.index += 1;
+        Some(
+            self.point
+                .add_diff_wrapped(diff, self.max_row, self.max_col)
+                .unwrap(),
+        )
+    }
+}
+
 pub struct Line {
     current: Point,
     end: Point,
@@ -269,5 +316,14 @@ mod tests {
         assert_eq!(Some(Point::new(0, 1)), neighbors.next());
         assert_eq!(Some(Point::new(1, 0)), neighbors.next());
         assert_eq!(None, neighbors.next());
+    }
+
+    #[test]
+    fn test_wrapping_add() {
+        let pos = Point::default();
+        let result = pos.add_diff_wrapped(PointDiff::UP, 5, 10).unwrap();
+        assert_eq!(Point::new(4, 0), result);
+        let result = pos.add_diff_wrapped(PointDiff::LEFT, 5, 10).unwrap();
+        assert_eq!(Point::new(0, 9), result);
     }
 }
