@@ -1,4 +1,5 @@
 mod cube;
+mod line3d;
 mod matrix;
 mod point3d;
 mod pointdiff3d;
@@ -9,8 +10,9 @@ use std::{
 };
 
 pub use cube::{DiffCuboid, SplitAlign};
+pub use line3d::{Line3D, ParseLine3DError};
 pub use matrix::Matrix3D;
-pub use point3d::{Line, Neighbors3D, ParsePointError, Point3D};
+pub use point3d::{LineIterator3D, Neighbors3D, ParsePointError, Point3D};
 pub use pointdiff3d::PointDiff3D;
 
 #[derive(Clone)]

@@ -57,14 +57,14 @@ impl Point3D {
         }
     }
 
-    pub fn line_to(&self, other: Point3D) -> Option<Line> {
+    pub fn line_to(&self, other: Point3D) -> Option<LineIterator3D> {
         // One of them must match, can't handle non-straight lines yet.
-        if self.x != other.x && self.y != other.y {
+        if self.x != other.x && self.y != other.y && self.z != other.z {
             return None;
         }
 
         let direction = other.diff(*self)?.signum();
-        Some(Line {
+        Some(LineIterator3D {
             current: *self,
             end: other,
             direction,
@@ -169,14 +169,14 @@ impl Iterator for Neighbors3D {
     }
 }
 
-pub struct Line {
+pub struct LineIterator3D {
     current: Point3D,
     end: Point3D,
     direction: PointDiff3D,
     done: bool,
 }
 
-impl Iterator for Line {
+impl Iterator for LineIterator3D {
     type Item = Point3D;
 
     fn next(&mut self) -> Option<Self::Item> {
