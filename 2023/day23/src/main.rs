@@ -12,12 +12,15 @@ fn main() {
 
 // Get the longest hike that doesn't visit the same tile twice.
 fn part1(input: AocInput) -> usize {
-    let mut map = TrailMap::from_input(input);
+    let mut map = TrailMap::from_input(input, true);
     map.longest_path()
 }
 
+// The same, but ignores slopes.
+// N.B. Very slow, takes several minutes.
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let mut map = TrailMap::from_input(input, false);
+    map.longest_path()
 }
 
 #[derive(PartialEq, Eq)]
@@ -35,13 +38,19 @@ struct Tile {
 struct TrailMap(Grid<Tile>);
 
 impl TrailMap {
-    fn from_input(input: AocInput) -> Self {
+    fn from_input(input: AocInput, with_slopes: bool) -> Self {
         let grid = GridBuilder::from_input(input)
-            .map(|_, ch| Tile {
+            .map(move |_, ch| Tile {
                 kind: match ch {
                     b'.' => TileKind::Path,
                     b'#' => TileKind::Forest,
-                    _ => TileKind::Slope(PointDiff::from_arrows(ch).unwrap()),
+                    _ => {
+                        if with_slopes {
+                            TileKind::Slope(PointDiff::from_arrows(ch).unwrap())
+                        } else {
+                            TileKind::Path
+                        }
+                    }
                 },
                 visited: ch == b'#',
             })
@@ -98,6 +107,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(154, part2(AocInput::from_sample()));
     }
 }
