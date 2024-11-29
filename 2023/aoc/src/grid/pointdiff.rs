@@ -2,9 +2,10 @@ use std::{
     iter::Sum,
     num::TryFromIntError,
     ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign},
+    str::FromStr,
 };
 
-use super::Point;
+use super::{point::ParsePointError, Point};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Debug)]
 pub struct PointDiff {
@@ -182,6 +183,19 @@ impl SubAssign for PointDiff {
 impl Sum for PointDiff {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(PointDiff::default(), |x, y| x + y)
+    }
+}
+
+// Parses from "col,row" format
+impl FromStr for PointDiff {
+    type Err = ParsePointError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (col, row) = s.split_once(',').ok_or(ParsePointError::MissingDelimiter)?;
+        Ok(Self {
+            row: row.parse()?,
+            col: col.parse()?,
+        })
     }
 }
 

@@ -109,9 +109,9 @@ impl FromStr for PointDiff3D {
         let (x, y) = s.split_once(',').ok_or(ParsePointError::MissingDelimiter)?;
         let (y, z) = y.split_once(',').ok_or(ParsePointError::MissingDelimiter)?;
         Ok(Self {
-            x: x.parse()?,
-            y: y.parse()?,
-            z: z.parse()?,
+            x: x.trim().parse()?,
+            y: y.trim().parse()?,
+            z: z.trim().parse()?,
         })
     }
 }

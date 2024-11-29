@@ -1,4 +1,5 @@
 mod cube;
+mod generic_point3d;
 mod line3d;
 mod matrix;
 mod point3d;
@@ -10,6 +11,7 @@ use std::{
 };
 
 pub use cube::{DiffCuboid, SplitAlign};
+pub use generic_point3d::GenericPoint3D;
 pub use line3d::{Line3D, ParseLine3DError};
 pub use matrix::Matrix3D;
 pub use point3d::{LineIterator3D, Neighbors3D, ParsePointError, Point3D};

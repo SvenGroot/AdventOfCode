@@ -1,4 +1,5 @@
 use std::{
+    fmt::Display,
     num::{ParseIntError, TryFromIntError},
     ops::{Add, AddAssign, Sub, SubAssign},
     str::FromStr,
@@ -141,10 +142,16 @@ impl FromStr for Point3D {
         let (x, y) = s.split_once(',').ok_or(ParsePointError::MissingDelimiter)?;
         let (y, z) = y.split_once(',').ok_or(ParsePointError::MissingDelimiter)?;
         Ok(Self {
-            x: x.parse()?,
-            y: y.parse()?,
-            z: z.parse()?,
+            x: x.trim().parse()?,
+            y: y.trim().parse()?,
+            z: z.trim().parse()?,
         })
+    }
+}
+
+impl Display for Point3D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{},{},{}", self.x(), self.y(), self.z())
     }
 }
 
