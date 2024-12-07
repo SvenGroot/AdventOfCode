@@ -289,6 +289,34 @@ impl<T> Grid<T> {
             || pos.col() == self.width() - 1
     }
 
+    pub fn get_edge(&self, pos: Point) -> Edge {
+        let bottom_row = self.height() - 1;
+        let right_col = self.width() - 1;
+        if pos.row() == 0 {
+            if pos.col() == 0 {
+                Edge::TopLeft
+            } else if pos.col() == right_col {
+                Edge::TopRight
+            } else {
+                Edge::Top
+            }
+        } else if pos.row() == bottom_row {
+            if pos.col() == 0 {
+                Edge::BottomLeft
+            } else if pos.col() == right_col {
+                Edge::BottomRight
+            } else {
+                Edge::Bottom
+            }
+        } else if pos.col() == 0 {
+            Edge::Left
+        } else if pos.col() == right_col {
+            Edge::Right
+        } else {
+            Edge::None
+        }
+    }
+
     pub fn write_mapped<U: Display>(
         &self,
         f: &mut std::fmt::Formatter<'_>,
@@ -393,6 +421,36 @@ impl<'a, T> Iterator for ScanMut<'a, T> {
 
         // Work around borrow checker limitation.
         unsafe { Some(&mut *(result as *mut T)) }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Edge {
+    #[default]
+    None,
+    Top,
+    Right,
+    Bottom,
+    Left,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
+impl Edge {
+    pub fn get_away_directions(&self) -> Option<[PointDiff; 3]> {
+        Some(match *self {
+            Edge::None => return None,
+            Edge::Top => [PointDiff::DOWN_LEFT, PointDiff::DOWN, PointDiff::DOWN_RIGHT],
+            Edge::Right => [PointDiff::UP_LEFT, PointDiff::LEFT, PointDiff::DOWN_LEFT],
+            Edge::Bottom => [PointDiff::UP_LEFT, PointDiff::UP, PointDiff::UP_RIGHT],
+            Edge::Left => [PointDiff::UP_RIGHT, PointDiff::RIGHT, PointDiff::DOWN_RIGHT],
+            Edge::TopLeft => [PointDiff::RIGHT, PointDiff::DOWN_RIGHT, PointDiff::DOWN],
+            Edge::TopRight => [PointDiff::LEFT, PointDiff::DOWN_LEFT, PointDiff::DOWN],
+            Edge::BottomLeft => [PointDiff::UP, PointDiff::UP_RIGHT, PointDiff::RIGHT],
+            Edge::BottomRight => [PointDiff::LEFT, PointDiff::UP_LEFT, PointDiff::UP],
+        })
     }
 }
 
