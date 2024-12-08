@@ -1,7 +1,7 @@
 use std::{
     iter::Sum,
     num::TryFromIntError,
-    ops::{Add, AddAssign, Mul, MulAssign, Sub, SubAssign},
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
     str::FromStr,
 };
 
@@ -183,6 +183,14 @@ impl SubAssign for PointDiff {
 impl Sum for PointDiff {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(PointDiff::default(), |x, y| x + y)
+    }
+}
+
+impl Neg for PointDiff {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        self.invert()
     }
 }
 

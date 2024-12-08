@@ -1,7 +1,9 @@
 // https://adventofcode.com/2024/day/4
 
+use std::char;
+
 use aoc::{
-    grid::{Grid, GridBuilder},
+    grid::{Grid, GridBuilder, Point, PointDiff},
     input::AocInput,
 };
 
@@ -17,7 +19,8 @@ fn part1(input: AocInput) -> usize {
 }
 
 fn part2(input: AocInput) -> usize {
-    input.map(|_| 0).sum()
+    let search = WordSearch::from_input(input);
+    search.find_x_shaped(&['M', 'A', 'S'])
 }
 
 struct WordSearch(Grid<char>);
@@ -49,6 +52,26 @@ impl WordSearch {
             })
             .sum()
     }
+
+    fn find_x_shaped(&self, word: &[char; 3]) -> usize {
+        self.0
+            .cells()
+            .filter(|&(pos, ch)| {
+                if *ch != word[1] {
+                    return false;
+                }
+
+                self.check_dir(pos, PointDiff::UP_LEFT, word).is_some()
+                    && self.check_dir(pos, PointDiff::DOWN_LEFT, word).is_some()
+            })
+            .count()
+    }
+
+    fn check_dir(&self, pos: Point, dir: PointDiff, word: &[char; 3]) -> Option<()> {
+        let ch1 = self.0[self.0.add_point(pos, dir)?];
+        let ch2 = self.0[self.0.add_point(pos, -dir)?];
+        (ch1 == word[0] && ch2 == word[2] || ch1 == word[2] && ch2 == word[0]).then_some(())
+    }
 }
 
 fn find_occurrences(mut input: &str, pattern: &str) -> usize {
@@ -72,6 +95,6 @@ mod tests {
 
     #[test]
     fn test_part2() {
-        assert_eq!(0, part2(AocInput::from_sample()));
+        assert_eq!(9, part2(AocInput::from_sample()));
     }
 }
